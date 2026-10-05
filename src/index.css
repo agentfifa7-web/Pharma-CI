@@ -33,3 +33,6 @@ html.senior { font-size: 19px; }
 
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { scrollbar-width: none; }
+
+/* Les enfants de grilles/flex ne doivent jamais forcer un débordement horizontal sur mobile */
+.grid > *, .flex-col > * { min-width: 0; }

@@ -1,56 +1,58 @@
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AdminLayout, AgentLayout, PatientLayout } from './components/Layouts'
 
-import Home from './pages/patient/Home'
-import Medications from './pages/patient/Medications'
-import MedicationDetail from './pages/patient/MedicationDetail'
-import Pharmacies from './pages/patient/Pharmacies'
-import PharmacyDetail from './pages/patient/PharmacyDetail'
-import Garde from './pages/patient/Garde'
-import PharmaMap from './pages/patient/PharmaMap'
-import PrescriptionUpload from './pages/patient/PrescriptionUpload'
-import Prescriptions from './pages/patient/Prescriptions'
-import PrescriptionDetail from './pages/patient/PrescriptionDetail'
-import Missions from './pages/patient/Missions'
-import MissionTracking from './pages/patient/MissionTracking'
-import Treatments from './pages/patient/Treatments'
-import History from './pages/patient/History'
-import Cmu from './pages/patient/Cmu'
-import Insurance from './pages/patient/Insurance'
-import News from './pages/patient/News'
-import NewsArticle from './pages/patient/NewsArticle'
-import Tips from './pages/patient/Tips'
-import Alerts from './pages/patient/Alerts'
-import Vigilance from './pages/patient/Vigilance'
-import Scan from './pages/patient/Scan'
-import Assistant from './pages/patient/Assistant'
-import Legal from './pages/patient/Legal'
-import Ordre from './pages/patient/Ordre'
-import HealthServices from './pages/patient/HealthServices'
-import Emergency from './pages/patient/Emergency'
-import Family from './pages/patient/Family'
-import Profile from './pages/patient/Profile'
-import Notifications from './pages/patient/Notifications'
-import NotFound from './pages/patient/NotFound'
+const Home = lazy(() => import('./pages/patient/Home'))
+const Medications = lazy(() => import('./pages/patient/Medications'))
+const MedicationDetail = lazy(() => import('./pages/patient/MedicationDetail'))
+const Pharmacies = lazy(() => import('./pages/patient/Pharmacies'))
+const PharmacyDetail = lazy(() => import('./pages/patient/PharmacyDetail'))
+const Garde = lazy(() => import('./pages/patient/Garde'))
+const PharmaMap = lazy(() => import('./pages/patient/PharmaMap'))
+const PrescriptionUpload = lazy(() => import('./pages/patient/PrescriptionUpload'))
+const Prescriptions = lazy(() => import('./pages/patient/Prescriptions'))
+const PrescriptionDetail = lazy(() => import('./pages/patient/PrescriptionDetail'))
+const Missions = lazy(() => import('./pages/patient/Missions'))
+const MissionTracking = lazy(() => import('./pages/patient/MissionTracking'))
+const Treatments = lazy(() => import('./pages/patient/Treatments'))
+const History = lazy(() => import('./pages/patient/History'))
+const Cmu = lazy(() => import('./pages/patient/Cmu'))
+const Insurance = lazy(() => import('./pages/patient/Insurance'))
+const News = lazy(() => import('./pages/patient/News'))
+const NewsArticle = lazy(() => import('./pages/patient/NewsArticle'))
+const Tips = lazy(() => import('./pages/patient/Tips'))
+const Alerts = lazy(() => import('./pages/patient/Alerts'))
+const Vigilance = lazy(() => import('./pages/patient/Vigilance'))
+const Scan = lazy(() => import('./pages/patient/Scan'))
+const Assistant = lazy(() => import('./pages/patient/Assistant'))
+const Legal = lazy(() => import('./pages/patient/Legal'))
+const Ordre = lazy(() => import('./pages/patient/Ordre'))
+const HealthServices = lazy(() => import('./pages/patient/HealthServices'))
+const Emergency = lazy(() => import('./pages/patient/Emergency'))
+const Family = lazy(() => import('./pages/patient/Family'))
+const Profile = lazy(() => import('./pages/patient/Profile'))
+const Notifications = lazy(() => import('./pages/patient/Notifications'))
+const NotFound = lazy(() => import('./pages/patient/NotFound'))
 
-import AgentDashboard from './pages/agent/AgentDashboard'
-import AgentMissions from './pages/agent/AgentMissions'
-import AgentMission from './pages/agent/AgentMission'
-import AgentEarnings from './pages/agent/AgentEarnings'
+const AgentDashboard = lazy(() => import('./pages/agent/AgentDashboard'))
+const AgentMissions = lazy(() => import('./pages/agent/AgentMissions'))
+const AgentMission = lazy(() => import('./pages/agent/AgentMission'))
+const AgentEarnings = lazy(() => import('./pages/agent/AgentEarnings'))
 
-import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminMissions from './pages/admin/AdminMissions'
-import AdminPrescriptions from './pages/admin/AdminPrescriptions'
-import AdminAgents from './pages/admin/AdminAgents'
-import AdminPharmacies from './pages/admin/AdminPharmacies'
-import AdminFraud from './pages/admin/AdminFraud'
-import AdminData from './pages/admin/AdminData'
-import AdminContent from './pages/admin/AdminContent'
-import AdminSecurity from './pages/admin/AdminSecurity'
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const AdminMissions = lazy(() => import('./pages/admin/AdminMissions'))
+const AdminPrescriptions = lazy(() => import('./pages/admin/AdminPrescriptions'))
+const AdminAgents = lazy(() => import('./pages/admin/AdminAgents'))
+const AdminPharmacies = lazy(() => import('./pages/admin/AdminPharmacies'))
+const AdminFraud = lazy(() => import('./pages/admin/AdminFraud'))
+const AdminData = lazy(() => import('./pages/admin/AdminData'))
+const AdminContent = lazy(() => import('./pages/admin/AdminContent'))
+const AdminSecurity = lazy(() => import('./pages/admin/AdminSecurity'))
 
 export default function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<div className="grid min-h-dvh place-items-center text-sm text-slate-400">Chargement…</div>}>
       <Routes>
         <Route element={<PatientLayout />}>
           <Route index element={<Home />} />
@@ -103,6 +105,7 @@ export default function App() {
           <Route path="securite" element={<AdminSecurity />} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

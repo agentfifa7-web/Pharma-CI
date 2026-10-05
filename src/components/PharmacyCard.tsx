@@ -17,7 +17,7 @@ export default function PharmacyCard({ p, compact }: { p: PharmacyView; compact?
   const fav = useStore((s) => s.favorites.includes(p.id))
   const toggle = useStore((s) => s.toggleFavorite)
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:shadow-md">
       <div className="flex items-start gap-3">
         <div className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-xl text-lg', p.onGarde ? 'bg-red-50' : 'bg-brand-50')}>{p.onGarde ? '🚨' : '💊'}</div>
         <div className="min-w-0 flex-1">

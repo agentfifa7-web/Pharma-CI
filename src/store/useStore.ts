@@ -328,7 +328,7 @@ export const useStore = create<State>()(
 
         confirmDelivery: (missionId, code) => {
           const m = get().missions.find((x) => x.id === missionId)
-          if (!m || m.otp !== code.trim()) return false
+          if (!m || m.status !== 'en_route' || m.otp !== code.trim()) return false
           patchMission(missionId, (x) => ({ status: 'livree', eta: 0, agentPosition: x.deliveryPosition, timeline: step(x, 'livree', 'Code OTP validé — médicaments, facture originale et justificatif remis ✅') }))
           setPrescriptionStatus(m.prescriptionId, m.partial ? 'partiellement_executee' : 'livree', 'Livraison confirmée par code OTP')
           if (m.agentId) patchAgent(m.agentId, (a) => ({ activeMissions: Math.max(0, a.activeMissions - 1), completed: a.completed + 1, earnings: a.earnings + Math.round(m.estimate.delivery * 0.8 + m.estimate.service * 0.3) }))
@@ -350,7 +350,7 @@ export const useStore = create<State>()(
           const m = get().missions.find((x) => x.id === missionId)
           if (m?.agentId) {
             const avg = (rating.agent.ponctualite + rating.agent.courtoisie + rating.agent.respect) / 3
-            patchAgent(m.agentId, (a) => ({ rating: Math.round(((a.rating * a.completed + avg) / (a.completed + 1)) * 100) / 100 }))
+            patchAgent(m.agentId, (a) => ({ rating: Math.round(((a.rating * Math.max(0, a.completed - 1) + avg) / Math.max(1, a.completed)) * 100) / 100 }))
           }
         },
 
