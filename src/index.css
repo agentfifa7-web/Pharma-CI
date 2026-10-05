@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-50: #e8f8f0;
+  --color-brand-100: #c6eedb;
+  --color-brand-200: #8fdcb7;
+  --color-brand-300: #52c68f;
+  --color-brand-400: #20b072;
+  --color-brand-500: #009e60;
+  --color-brand-600: #008150;
+  --color-brand-700: #006742;
+  --color-brand-800: #054f35;
+  --color-brand-900: #063f2c;
+  --color-accent-50: #fff4e6;
+  --color-accent-100: #ffe3bf;
+  --color-accent-400: #ff9a2e;
+  --color-accent-500: #f77f00;
+  --color-accent-600: #d96c00;
+  --color-ink: #0f1f1a;
+}
+
+html { -webkit-tap-highlight-color: transparent; }
+body { @apply bg-slate-50 text-ink antialiased; }
+
+/* Espace senior : texte agrandi partout */
+html.senior { font-size: 19px; }
+
+.leaflet-container { font-family: inherit; border-radius: 1rem; z-index: 0; }
+
+@keyframes pulse-ring { 0% { transform: scale(.8); opacity: .7 } 100% { transform: scale(2.2); opacity: 0 } }
+.pulse-ring::before { content: ""; position: absolute; inset: 0; border-radius: 9999px; background: currentColor; animation: pulse-ring 1.6s ease-out infinite; }
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; }
