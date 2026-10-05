@@ -5,7 +5,7 @@ import { usePharmacies, useLocate, type PharmacyView } from '../../lib/usePharma
 import { normalize } from '../../lib/format'
 import { formatDistance } from '../../lib/geo'
 import { COMMUNES, CITIES } from '../../data/communes'
-import { PHARMACY_SOURCE } from '../../services/pharmacyProvider'
+import { pharmacySourceLabel } from '../../services/pharmacyProvider'
 import PharmacyCard from '../../components/PharmacyCard'
 import MapView, { type MapMarker } from '../../components/MapView'
 import { Button, EmptyState, Notice, OpenBadge, PageHeader, Select, cx } from '../../components/ui'
@@ -216,7 +216,7 @@ export default function Pharmacies() {
       )}
 
       <Notice tone="blue" icon={<Info size={16} />} className="mt-6">
-        Source : <strong>{PHARMACY_SOURCE}</strong>. Les horaires et tours de garde doivent être confirmés auprès des sources officielles.
+        Source : <strong>{pharmacySourceLabel()}</strong>. Les horaires et tours de garde doivent être confirmés auprès des sources officielles.
         Pharmacien ? Revendiquez votre fiche depuis sa page pour la mettre à jour.
       </Notice>
     </div>

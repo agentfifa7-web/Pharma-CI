@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { usePharmacies } from '../../lib/usePharmacies'
 import { DAYS, formatHours, gardePeriod } from '../../lib/hours'
-import { directionsUrl, formatDistance } from '../../lib/geo'
+import { formatDistance, pharmacyDirectionsUrl } from '../../lib/geo'
 import { dateFr } from '../../lib/format'
 import { insurerName } from '../../data/insurances'
 import { useStore } from '../../store/useStore'
@@ -63,7 +63,7 @@ export default function PharmacyDetail() {
       {/* Actions */}
       <div className="mb-5 grid grid-cols-4 gap-2">
         <a href={`tel:${p.phone.replace(/\s/g, '')}`} className="flex flex-col items-center gap-1 rounded-2xl bg-brand-500 py-3 text-xs font-semibold text-white shadow-sm hover:bg-brand-600"><Phone size={20} />Appeler</a>
-        <a href={directionsUrl(p.position)} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1 rounded-2xl bg-white py-3 text-xs font-semibold ring-1 ring-slate-200 hover:bg-slate-50"><Navigation size={20} />Itinéraire</a>
+        <a href={pharmacyDirectionsUrl(p)} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1 rounded-2xl bg-white py-3 text-xs font-semibold ring-1 ring-slate-200 hover:bg-slate-50"><Navigation size={20} />Itinéraire</a>
         <button onClick={() => sharePharmacy(p)} className="flex flex-col items-center gap-1 rounded-2xl bg-white py-3 text-xs font-semibold ring-1 ring-slate-200 hover:bg-slate-50"><Share2 size={20} />Partager</button>
         <button onClick={() => toggleFavorite(p.id)} className={cx('flex flex-col items-center gap-1 rounded-2xl py-3 text-xs font-semibold ring-1', fav ? 'bg-red-50 text-red-600 ring-red-200' : 'bg-white ring-slate-200 hover:bg-slate-50')}>
           <Heart size={20} className={fav ? 'fill-red-500' : ''} />{fav ? 'Favori' : 'Ajouter'}
@@ -153,7 +153,7 @@ export default function PharmacyDetail() {
             route={[position, p.position]}
             className="h-72 overflow-hidden rounded-2xl border border-slate-200"
           />
-          <a href={directionsUrl(p.position)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-ink py-3 text-sm font-semibold text-white hover:bg-ink/90"><Navigation size={16} />Itinéraire ({formatDistance(p.km)})</a>
+          <a href={pharmacyDirectionsUrl(p)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-ink py-3 text-sm font-semibold text-white hover:bg-ink/90"><Navigation size={16} />Itinéraire ({formatDistance(p.km)})</a>
 
           {p.deliveryAvailable && (
             <Card className="flex items-start gap-3 border-violet-200 bg-violet-50/50">
@@ -167,7 +167,11 @@ export default function PharmacyDetail() {
 
           <Card className="text-sm">
             <p className="flex items-center gap-1.5 font-semibold"><Info size={15} />Source des données</p>
-            <p className="mt-1 text-slate-500">{p.source}. Informations à confirmer auprès de la pharmacie.</p>
+            <p className="mt-1 text-slate-500">
+              {p.sourceUrl ? <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-600 underline">{p.source}</a> : p.source}. Informations à confirmer auprès de la pharmacie.
+            </p>
+            {p.positionApprox && <p className="mt-1 text-amber-700">📍 Position approximative (centre de la commune) : l'itinéraire recherche la pharmacie par son nom.</p>}
+            {p.hoursApprox && <p className="mt-1 text-amber-700">🕗 Horaires non publiés par la source : horaires usuels affichés à titre indicatif.</p>}
             {!p.claimed && (
               <button onClick={() => { setClaimOpen(true); setClaimSent(false) }} className="mt-3 w-full rounded-xl bg-brand-50 px-3 py-2.5 font-semibold text-brand-700 hover:bg-brand-100">
                 Vous êtes le pharmacien ? Revendiquer cette fiche

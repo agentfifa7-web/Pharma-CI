@@ -64,7 +64,7 @@ export default function AdminData() {
 
   const coverage = useMemo(
     () =>
-      COMMUNES.map((c) => {
+      COMMUNES.filter((c) => c.population > 0).map((c) => {
         const n = PHARMACIES.filter((p) => p.commune === c.name).length
         const per100k = (n / c.population) * 100000
         return { ...c, n, per100k, level: levelOf(per100k) }

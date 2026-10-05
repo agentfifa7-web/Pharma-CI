@@ -21,6 +21,12 @@ export function travelMinutes(km: number, vehicle: 'moto' | 'voiture' | 'velo' |
   return Math.max(3, Math.round((km / speed) * 60))
 }
 
+/** Itinéraire vers une pharmacie : recherche par nom si la position n'est qu'approximative. */
+export const pharmacyDirectionsUrl = (p: { name: string; commune: string; city: string; position: LatLng; positionApprox?: boolean }) =>
+  p.positionApprox
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${p.commune} ${p.city} Côte d'Ivoire`)}`
+    : directionsUrl(p.position)
+
 export const directionsUrl = (to: LatLng) =>
   `https://www.google.com/maps/dir/?api=1&destination=${to.lat},${to.lng}`
 

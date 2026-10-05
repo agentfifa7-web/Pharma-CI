@@ -85,10 +85,8 @@ src/
 
 Cette version est un **prototype fonctionnel côté client**. Avant toute mise en service :
 
-- **Pharmacies et tours de garde** : les fiches actuelles sont fictives. `src/services/pharmacyProvider.ts`
-  accepte `VITE_PHARMACY_API_URL`, qui doit pointer vers un backend chargé d'agréger les données publiques
-  (par exemple [pharmacies-de-garde.ci](https://www.pharmacies-de-garde.ci)) côté serveur, dans le respect
-  de leurs conditions d'utilisation.
+- **Pharmacies et tours de garde** : synchronisés depuis [pharmacies-de-garde.ci](https://www.pharmacies-de-garde.ci)
+  (voir ci-dessous). Sans fichier synchronisé, l'application revient au jeu de démonstration.
 - **Prix et CMU** : valeurs d'exemple. Le panier CMU doit être alimenté depuis les listes officielles du
   ministère (sante.gouv.ci) et tenu à jour.
 - **Lecture d'ordonnance (IA)** : l'extraction est simulée (`src/data/extraction.ts`) ; à brancher sur un
@@ -99,3 +97,31 @@ Cette version est un **prototype fonctionnel côté client**. Avant toute mise e
   journalisation, conservation — à concevoir avec un spécialiste conformité et selon les exigences de
   l'Autorité de protection des données (autoritedeprotection.ci). Aujourd'hui, les données restent dans le
   `localStorage` du navigateur.
+
+## 🔄 Synchronisation avec pharmacies-de-garde.ci
+
+`scripts/sync-pharmacies/` récupère les données publiques du site et produit `public/data/pharmacies.json`,
+chargé par l'application au démarrage.
+
+| Source | Contenu extrait |
+|---|---|
+| `/liste-des-pharmacies-de-garde-en-cote-divoire/` (tableaux TablePress) | Période de garde, pharmacies de garde d'Abidjan et de l'intérieur, commune/quartier, téléphone |
+| API WordPress `/wp-json/wp/v2/listing` | Annuaire complet (fiches « Pharmacies »), localisations |
+| Fiches `/listing/<slug>/` | Coordonnées GPS, adresse, horaires d'ouverture |
+
+```bash
+npm run sync:test                       # tests des parseurs (sur des pages enregistrées)
+npm run sync:pharmacies                 # synchronisation complète (accès réseau requis)
+npm run sync:pharmacies -- --garde-only # uniquement la liste de garde
+npm run sync:pharmacies -- --fixtures   # hors ligne, à partir de scripts/sync-pharmacies/fixtures/
+```
+
+- **Automatisation** : `.github/workflows/sync-pharmacies.yml` s'exécute chaque jour (et à la demande depuis
+  l'onglet *Actions*). Il ne publie que si les données ont changé ; en cas d'échec, le dernier fichier valide est conservé.
+- **Rapprochement** : les pharmacies de garde sont associées aux fiches de l'annuaire (nom + ville) pour obtenir
+  leurs coordonnées GPS. Sans correspondance, la position est celle du centre de la commune et l'application
+  l'indique (« Position approximative ») ; l'itinéraire recherche alors la pharmacie par son nom.
+- **Données personnelles** : le nom des pharmaciens titulaires publié dans les tableaux n'est pas conservé.
+- **Respect de la source** : requêtes espacées, User-Agent identifié, cache des fiches. Vérifiez les conditions
+  d'utilisation du site et, idéalement, concluez un accord avec son éditeur (partenariat@pharmacies-de-garde.ci
+  est indiqué sur le site) pour obtenir un flux officiel.

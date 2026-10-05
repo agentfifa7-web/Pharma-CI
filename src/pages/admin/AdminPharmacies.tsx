@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { BadgeCheck, Info, MapPin, Search, ShieldCheck, Siren } from 'lucide-react'
 import { PHARMACIES } from '../../data/pharmacies'
 import { CITIES } from '../../data/communes'
-import { PHARMACY_SOURCE } from '../../services/pharmacyProvider'
+import { pharmacySourceLabel } from '../../services/pharmacyProvider'
 import { isOnGarde, openInfo } from '../../lib/hours'
 import { normalize } from '../../lib/format'
 import { Badge, Notice, OpenBadge, PageHeader, Select, Stat } from '../../components/ui'
@@ -85,7 +85,7 @@ export default function AdminPharmacies() {
       )}
 
       <Notice tone="blue" icon={<Info size={16} />} className="mt-5">
-        <p>Source actuelle : <strong>{PHARMACY_SOURCE}</strong>.</p>
+        <p>Source actuelle : <strong>{pharmacySourceLabel()}</strong>.</p>
         <p className="mt-1">
           En production, l'annuaire est synchronisé par un service backend qui agrège les données publiques (ex. <strong>pharmacies-de-garde.ci</strong> : liste des pharmacies et tours de garde par commune),
           les normalise et les met en cache. Le frontend s'y connecte via <code className="rounded bg-white/70 px-1">VITE_PHARMACY_API_URL</code> (voir <code className="rounded bg-white/70 px-1">src/services/pharmacyProvider.ts</code>).

@@ -1,4 +1,5 @@
 import type { OpenState, Pharmacy } from '../types'
+import { PHARMACY_META } from '../data/pharmacyMeta'
 
 export const DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 export const GARDE_GROUPS = 4
@@ -22,6 +23,7 @@ export function gardeWeekIndex(now = new Date()) {
 }
 
 export function gardePeriod(now = new Date()) {
+  if (PHARMACY_META.garde) return { start: new Date(PHARMACY_META.garde.start), end: new Date(PHARMACY_META.garde.end) }
   const start = new Date(now)
   start.setDate(start.getDate() - ((start.getDay() + 1) % 7))
   start.setHours(8, 0, 0, 0)
@@ -30,12 +32,15 @@ export function gardePeriod(now = new Date()) {
   return { start, end }
 }
 
-export const isOnGarde = (p: Pharmacy, now = new Date()) => p.gardeGroup === gardeWeekIndex(now) % GARDE_GROUPS
+export function isOnGarde(p: Pharmacy, now = new Date()) {
+  if (p.garde) return now >= new Date(p.garde.start) && now < new Date(p.garde.end)
+  return p.gardeGroup >= 0 && p.gardeGroup === gardeWeekIndex(now) % GARDE_GROUPS
+}
 
 export type OpenInfo = { state: OpenState; label: string; detail: string }
 
 export function openInfo(p: Pharmacy, now = new Date()): OpenInfo {
-  if (isOnGarde(p, now)) return { state: 'open', label: 'De garde', detail: 'Ouverte 24h/24 cette semaine' }
+  if (isOnGarde(p, now)) return { state: 'open', label: 'De garde', detail: p.garde ? `Garde jusqu'au ${new Date(p.garde.end).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}` : 'Ouverte 24h/24 cette semaine' }
   const day = now.getDay()
   const minutes = now.getHours() * 60 + now.getMinutes()
   const today = p.hours[day]

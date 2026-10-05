@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { Heart, MapPin, Navigation, Phone, ShieldCheck, Share2, Truck } from 'lucide-react'
 import type { PharmacyView } from '../lib/usePharmacies'
-import { directionsUrl, formatDistance } from '../lib/geo'
+import { formatDistance, pharmacyDirectionsUrl } from '../lib/geo'
 import { useStore } from '../store/useStore'
 import { Badge, OpenBadge, cx } from './ui'
 
-export async function sharePharmacy(p: { name: string; address: string; phone: string; position: { lat: number; lng: number } }) {
-  const text = `${p.name}\n${p.address}\n📞 ${p.phone}\n${directionsUrl(p.position)}`
+export async function sharePharmacy(p: Parameters<typeof pharmacyDirectionsUrl>[0] & { address: string; phone: string }) {
+  const text = `${p.name}\n${p.address}\n📞 ${p.phone}\n${pharmacyDirectionsUrl(p)}`
   try {
     if (navigator.share) await navigator.share({ title: p.name, text })
     else { await navigator.clipboard.writeText(text); alert('Coordonnées copiées dans le presse-papiers.') }
@@ -37,13 +37,14 @@ export default function PharmacyCard({ p, compact }: { p: PharmacyView; compact?
               {p.cmuVerified && <Badge tone="green"><ShieldCheck size={12} />CMU vérifiée</Badge>}
               {p.insurances.length > 0 && <Badge tone="blue">{p.insurances.length} assurance{p.insurances.length > 1 ? 's' : ''}</Badge>}
               {p.deliveryAvailable && <Badge tone="violet"><Truck size={12} />Livraison PHARMA CI</Badge>}
+              {p.positionApprox && <Badge tone="orange">📍 Position approximative</Badge>}
             </div>
           )}
         </div>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
         <a href={`tel:${p.phone.replace(/\s/g, '')}`} className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-50 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100"><Phone size={15} />Appeler</a>
-        <a href={directionsUrl(p.position)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"><Navigation size={15} />Itinéraire</a>
+        <a href={pharmacyDirectionsUrl(p)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"><Navigation size={15} />Itinéraire</a>
         <button onClick={() => sharePharmacy(p)} className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"><Share2 size={15} />Partager</button>
       </div>
     </div>

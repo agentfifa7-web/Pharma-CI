@@ -24,6 +24,13 @@ export type Pharmacy = {
   /** Fiche revendiquée par la pharmacie (sinon référencée à partir de données publiques). */
   claimed: boolean
   source: string
+  /** Période de garde publiée par la source (prioritaire sur la rotation `gardeGroup`). */
+  garde?: { start: string; end: string }
+  /** Coordonnées déduites du centre de la commune (fiche sans GPS). */
+  positionApprox?: boolean
+  /** Horaires non publiés par la source : valeurs usuelles par défaut. */
+  hoursApprox?: boolean
+  sourceUrl?: string
 }
 
 export type OpenState = 'open' | 'soon' | 'closed'

@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Star } from 'lucide-react'
 import type { CmuStatus, OpenState, PriceLevel } from '../types'
+import { PHARMACY_META } from '../data/pharmacyMeta'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -236,7 +237,9 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
 export function DemoBanner() {
   return (
     <div className="bg-ink px-4 py-1.5 text-center text-[11px] font-medium text-white/80">
-      Version de démonstration — pharmacies, prix et statuts CMU sont des données d'exemple à vérifier auprès des sources officielles.
+      {PHARMACY_META.live
+        ? `Pharmacies et gardes : ${PHARMACY_META.label} — à confirmer par téléphone. Prix et statuts CMU : données d'exemple.`
+        : "Version de démonstration — pharmacies, prix et statuts CMU sont des données d'exemple à vérifier auprès des sources officielles."}
     </div>
   )
 }
