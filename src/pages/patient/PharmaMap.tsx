@@ -2,24 +2,34 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Crosshair, Layers, Map as MapIcon } from 'lucide-react'
 import { usePharmacies, useLocate } from '../../lib/usePharmacies'
-import { formatDistance } from '../../lib/geo'
-import { HEALTH_PLACES } from '../../data/health'
+import { distanceKm, formatDistance, pharmacyDirectionsUrl } from '../../lib/geo'
+import { HEALTH_KIND, HEALTH_PLACES } from '../../data/health'
 import { VEHICLE_LABEL } from '../../data/agents'
 import { MISSION_LABEL, useStore } from '../../store/useStore'
 import MapView, { type MapMarker } from '../../components/MapView'
 import { Notice, OpenBadge, PageHeader, cx } from '../../components/ui'
-import type { LatLng } from '../../types'
+import type { HealthPlace, LatLng } from '../../types'
 
 type LayerKey = 'pharmacies' | 'garde' | 'centres' | 'labos' | 'agents' | 'missions'
 
 const LAYERS: { k: LayerKey; emoji: string; label: string; color: string }[] = [
   { k: 'pharmacies', emoji: '🟢', label: 'Pharmacies', color: '#009e60' },
   { k: 'garde', emoji: '🔴', label: 'Pharmacies de garde', color: '#dc2626' },
-  { k: 'centres', emoji: '🏥', label: 'Centres de santé', color: '#7c3aed' },
+  { k: 'centres', emoji: '🏥', label: 'Établissements de santé', color: '#7c3aed' },
   { k: 'labos', emoji: '🧪', label: 'Laboratoires', color: '#0284c7' },
-  { k: 'agents', emoji: '🚚', label: 'Agents disponibles', color: '#f77f00' },
+  { k: 'agents', emoji: '🚚', label: 'Agents (comptes de test)', color: '#f77f00' },
   { k: 'missions', emoji: '📍', label: 'Missions en cours', color: '#0f1f1a' },
 ]
+
+/** Limites d'affichage (performances de la carte). */
+const LIMIT = { pharmacies: 400, garde: 400, places: 300 }
+
+const nearest = (list: HealthPlace[], from: LatLng, n: number) =>
+  list
+    .map((h) => ({ h, km: distanceKm(from, h.position) }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, n)
+    .map((x) => x.h)
 
 export default function PharmaMap() {
   const pharmacies = usePharmacies()
@@ -37,8 +47,17 @@ export default function PharmaMap() {
     const labos = HEALTH_PLACES.filter((h) => h.kind === 'laboratoire')
     const avail = agents.filter((a) => a.available)
     const active = missions.filter((m) => m.status !== 'livree' && m.status !== 'annulee')
-    return { garde, regular, centres, labos, avail, active }
-  }, [pharmacies, agents, missions])
+    return {
+      garde, regular, centres, labos, avail, active,
+      // Pharmacies déjà triées par distance ; établissements : les plus proches.
+      shown: {
+        regular: regular.slice(0, LIMIT.pharmacies),
+        garde: garde.slice(0, LIMIT.garde),
+        centres: nearest(centres, position, LIMIT.places),
+        labos: nearest(labos, position, LIMIT.places),
+      },
+    }
+  }, [pharmacies, agents, missions, position])
 
   const counts: Record<LayerKey, number> = {
     pharmacies: data.regular.length,
@@ -59,26 +78,30 @@ export default function PharmaMap() {
         <Link to={`/pharmacies/${p.id}`} className="text-sm font-semibold text-brand-600">Voir la fiche →</Link>
       </div>
     )
-    if (on.pharmacies) data.regular.forEach((p) => list.push({ id: p.id, position: p.position, color: '#009e60', glyph: '✚', size: 22, popup: pharmacyPopup(p) }))
-    if (on.garde) data.garde.forEach((p) => list.push({ id: p.id, position: p.position, color: '#dc2626', glyph: '🚨', size: 32, popup: pharmacyPopup(p) }))
-    const place = (h: (typeof HEALTH_PLACES)[number], color: string, glyph: string) =>
+    if (on.pharmacies) data.shown.regular.forEach((p) => list.push({ id: p.id, position: p.position, color: '#009e60', glyph: '✚', size: 22, popup: pharmacyPopup(p) }))
+    if (on.garde) data.shown.garde.forEach((p) => list.push({ id: p.id, position: p.position, color: '#dc2626', glyph: '🚨', size: 32, popup: pharmacyPopup(p) }))
+    const place = (h: HealthPlace, color: string, glyph: string) => {
+      const tel = h.phone.replace(/[^\d+]/g, '')
       list.push({
         id: h.id, position: h.position, color, glyph, size: 26,
         popup: (
           <div className="min-w-40">
             <p className="font-bold">{h.name}</p>
-            <p className="text-xs text-slate-500">{h.commune} · {h.open24h ? 'Ouvert 24h/24' : 'Horaires variables'}</p>
-            <a href={`tel:${h.phone.replace(/\s/g, '')}`} className="text-sm font-semibold text-brand-600">📞 {h.phone}</a>
+            <p className="text-xs text-slate-500">{h.category ?? HEALTH_KIND[h.kind].label} · {h.commune}</p>
+            {h.positionApprox && <p className="text-xs italic text-amber-700">Position approximative (centre de la commune)</p>}
+            {tel && <a href={`tel:${tel}`} className="block text-sm font-semibold text-brand-600">📞 {h.phone}</a>}
+            <a href={pharmacyDirectionsUrl(h)} target="_blank" rel="noreferrer" className="block text-sm font-semibold text-brand-600">Itinéraire →</a>
           </div>
         ),
       })
-    if (on.centres) data.centres.forEach((h) => place(h, '#7c3aed', '🏥'))
-    if (on.labos) data.labos.forEach((h) => place(h, '#0284c7', '🧪'))
+    }
+    if (on.centres) data.shown.centres.forEach((h) => place(h, '#7c3aed', '🏥'))
+    if (on.labos) data.shown.labos.forEach((h) => place(h, '#0284c7', '🧪'))
     if (on.agents)
       data.avail.forEach((a) =>
         list.push({
           id: `ag-${a.id}`, position: a.position, color: '#f77f00', glyph: '🛵', size: 30,
-          popup: <div><p className="font-bold">Agent {a.name.split(' ')[0]}</p><p className="text-xs text-slate-500">{VEHICLE_LABEL[a.vehicle]} · zone {a.zone} · {a.activeMissions} mission(s)</p></div>,
+          popup: <div><p className="font-bold">{a.name}</p><p className="text-xs text-amber-700">Compte de test</p><p className="text-xs text-slate-500">{VEHICLE_LABEL[a.vehicle]} · zone {a.zone} · {a.activeMissions} mission(s)</p></div>,
         }),
       )
     if (on.missions)
@@ -132,7 +155,9 @@ export default function PharmaMap() {
       </div>
 
       <Notice tone="blue" className="mt-4">
-        Données de démonstration. Seules vos propres missions apparaissent sur la carte ; les agents sont affichés sans information personnelle.
+        Pharmacies et établissements : données publiques de pharmacies-de-garde.ci (les positions approximatives correspondent au centre de la commune).
+        Pour la fluidité, la carte affiche au plus les {LIMIT.pharmacies} pharmacies et {LIMIT.places} établissements de chaque type les plus proches.
+        Les agents affichés sont des comptes de test. Seules vos propres missions apparaissent sur la carte.
       </Notice>
     </div>
   )

@@ -3,7 +3,7 @@ import { Bell, BellRing, CalendarClock, Check, Info, Pill, Plus, Trash2, X } fro
 import type { Treatment } from '../../types'
 import { useActiveProfile, useStore } from '../../store/useStore'
 import { Badge, Button, ButtonLink, Card, EmptyState, Input, Notice, PageHeader, Section, cx } from '../../components/ui'
-import { MEDICATIONS } from '../../data/medications'
+import { medNameOptions } from '../../data/assistant'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -127,7 +127,7 @@ export default function Treatments() {
           <p className="mb-3 text-sm text-slate-500">Pour : <b>{profile.name}</b></p>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input label="Médicament" list="med-list" value={medication} onChange={(e) => setMedication(e.target.value)} placeholder="Ex. Amoxicilline 500 mg" />
-            <datalist id="med-list">{MEDICATIONS.map((m) => <option key={m.id} value={m.brand} />)}</datalist>
+            <datalist id="med-list">{medNameOptions().map((n) => <option key={n} value={n} />)}</datalist>
             <Input label="Dose prescrite (telle qu'écrite)" value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Ex. 1 gélule" />
           </div>
           <p className="mt-3 mb-1 text-sm font-semibold text-slate-700">Heures de prise</p>

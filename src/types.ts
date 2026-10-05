@@ -40,26 +40,33 @@ export type CmuStatus = 'pris_en_charge' | 'non_pris_en_charge' | 'a_verifier'
 
 export type Medication = {
   id: string
+  /** Code produit publié par la source. */
+  code?: string
+  /** Nom commercial tel que publié. */
   brand: string
-  dci: string
-  dosage: string
-  form: string
-  presentation: string
-  lab: string
-  therapeuticClass: string
-  indications: string
-  precautions: string
-  contraindications: string
-  sideEffects: string
-  storage: string
-  leaflet: string
-  regulatoryStatus: string
-  prescriptionRequired: boolean
-  cmu: { status: CmuStatus; reference?: string; conditions?: string; source: string; updatedAt: string }
-  price: { amount: number; level: PriceLevel; updatedAt: string; source: string }
-  /** Identifiants d'équivalents / génériques (même DCI, même dosage, même forme). */
+  dci?: string
+  /** Dosage extrait du libellé commercial. */
+  dosage?: string
+  form?: string
+  therapeuticClass?: string
+  presentation?: string
+  // Informations documentaires : non fournies par les sources actuelles (affichées seulement si renseignées).
+  lab?: string
+  indications?: string
+  precautions?: string
+  contraindications?: string
+  sideEffects?: string
+  storage?: string
+  leaflet?: string
+  regulatoryStatus?: string
+  prescriptionRequired?: boolean
+  cmu: { status: CmuStatus; reference?: string; conditions?: string; source: string; sourceUrl?: string; updatedAt: string }
+  price?: { amount: number; level: PriceLevel; updatedAt: string; source: string; sourceUrl?: string }
+  /** Identifiants d'équivalents (même DCI, même dosage, même forme). */
   equivalents: string[]
-  /** Numéros de lot connus (pour SCAN PHARMA). */
+  /** Produits de la liste CMU portant la même marque (sans conclure à une prise en charge). */
+  cmuCandidates?: string[]
+  /** Numéros de lot connus (pour SCAN PHARMA) — aucune base officielle importée pour l'instant. */
   lots: { lot: string; expiry: string; status: 'conforme' | 'rappele' | 'inconnu' }[]
 }
 
@@ -231,10 +238,13 @@ export type NewsArticle = {
   category: string
   title: string
   excerpt: string
-  body: string
+  body?: string
   date: string
-  readMinutes: number
-  emoji: string
+  /** Article d'origine (source externe). */
+  url?: string
+  image?: string
+  readMinutes?: number
+  emoji?: string
 }
 
 export type DrugAlert = {
@@ -250,12 +260,18 @@ export type DrugAlert = {
 
 export type HealthPlace = {
   id: string
-  kind: 'laboratoire' | 'clinique' | 'centre_sante' | 'urgence' | 'medecin'
+  kind: 'laboratoire' | 'clinique' | 'centre_sante' | 'urgence' | 'medecin' | 'autre'
+  /** Catégorie telle que publiée par la source (ex. « Laboratoire d'analyses médicales »). */
+  category?: string
   name: string
   commune: string
   city: string
+  address?: string
   position: LatLng
+  positionApprox?: boolean
   phone: string
   services: string[]
   open24h: boolean
+  hours?: WeeklyHours
+  sourceUrl?: string
 }

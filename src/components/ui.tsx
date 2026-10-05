@@ -238,8 +238,8 @@ export function DemoBanner() {
   return (
     <div className="bg-ink px-4 py-1.5 text-center text-[11px] font-medium text-white/80">
       {PHARMACY_META.live
-        ? `Pharmacies et gardes : ${PHARMACY_META.label} — à confirmer par téléphone. Prix et statuts CMU : données d'exemple.`
-        : "Version de démonstration — pharmacies, prix et statuts CMU sont des données d'exemple à vérifier auprès des sources officielles."}
+        ? `Données publiques de ${PHARMACY_META.label} (pharmacies, gardes, médicaments, prix, CMU) — à confirmer auprès de la pharmacie.`
+        : 'Données non chargées : lancez la synchronisation (npm run sync:pharmacies).'}
     </div>
   )
 }

@@ -43,13 +43,14 @@ export default function AgentEarnings() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="Revenus" subtitle={agent.name} icon={<Wallet size={22} />} />
+      <PageHeader title="Revenus" subtitle={`${agent.name} · compte de test`} icon={<Wallet size={22} />} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Revenus cumulés" value={<span className="text-lg">{fcfa(agent.earnings)}</span>} icon={<Wallet size={18} />} />
         <Stat label="Cette session" value={<span className="text-lg">{fcfa(appTotal)}</span>} hint={`${finished.length} mission(s) livrée(s)`} icon={<BarChart3 size={18} />} tone="accent" />
         <Stat label="Missions terminées" value={agent.completed} icon={<CheckCircle2 size={18} />} tone="slate" />
-        <Stat label="Note moyenne" value={<span className="flex items-center gap-1">{agent.rating.toFixed(2)} <Star size={18} className="fill-accent-400 text-accent-400" /></span>} icon={<Star size={18} />} tone="accent" />
+        <Stat label="Note moyenne" value={agent.rating > 0 ? <span className="flex items-center gap-1">{agent.rating.toFixed(2).replace('.', ',')} <Star size={18} className="fill-accent-400 text-accent-400" /></span> : '—'}
+          hint={agent.rating > 0 ? undefined : 'aucune évaluation'} icon={<Star size={18} />} tone="accent" />
       </div>
 
       <Section title="7 derniers jours">

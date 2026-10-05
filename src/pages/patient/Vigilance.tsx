@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AlertOctagon, CheckCircle2, MessageSquareHeart, Phone, Siren } from 'lucide-react'
 import type { VigilanceReport } from '../../types'
-import { MEDICATIONS, medById } from '../../data/medications'
+import { medById } from '../../data/medications'
+import { medNameOptions } from '../../data/assistant'
 import { useStore } from '../../store/useStore'
 import { dateTimeFr } from '../../lib/format'
 import { Badge, Button, Card, EmptyState, Input, Notice, PageHeader, Section, Select, Stars, Textarea, cx } from '../../components/ui'
@@ -104,7 +105,7 @@ export default function Vigilance() {
 
           <div>
             <Input label="Médicament concerné" required list="vig-meds" value={medication} onChange={(e) => setMedication(e.target.value)} placeholder="Nom du médicament" />
-            <datalist id="vig-meds">{MEDICATIONS.map((m) => <option key={m.id} value={m.brand} />)}</datalist>
+            <datalist id="vig-meds">{medNameOptions().map((n) => <option key={n} value={n} />)}</datalist>
           </div>
 
           {mode === 'avis' ? (

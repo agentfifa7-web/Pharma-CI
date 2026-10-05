@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Camera, Check, FileText, Fingerprint, Images, Loader2, Paperclip, Plus, ScanLine, Sparkles, Trash2, UserRound, X,
 } from 'lucide-react'
 import type { Prescription, PrescriptionLine } from '../../types'
 import { PRESCRIPTION_LABEL, useActiveProfile, useStore } from '../../store/useStore'
-import { Badge, Button, ButtonLink, Card, Input, Notice, PageHeader, Select, cx } from '../../components/ui'
+import { Badge, Button, ButtonLink, Card, Input, Notice, PageHeader, cx } from '../../components/ui'
 import { fingerprintFiles, imagePreview, uid } from '../../lib/crypto'
 import { dateTimeFr } from '../../lib/format'
-import { extractPrescription } from '../../data/extraction'
-import { MEDICATIONS, medById } from '../../data/medications'
+import { readPrescription } from '../../data/extraction'
+import { MEDICATIONS, medById, medShortName } from '../../data/medications'
+import { fcfa } from '../../lib/format'
 import { PRESCRIPTION_TONE, RELATION_LABEL } from '../../data/statusUi'
 
 type Picked = { key: string; file: File; preview?: string; pdf: boolean }
-type Phase = 'select' | 'processing' | 'analyzing' | 'detected' | 'review' | 'duplicate'
+type Phase = 'select' | 'processing' | 'ocr' | 'detected' | 'review' | 'duplicate'
 
 const STEPS = ['Document', 'Analyse', 'Vérification']
 
@@ -30,6 +31,16 @@ export default function PrescriptionUpload() {
   const [created, setCreated] = useState<Prescription | null>(null)
   const [duplicate, setDuplicate] = useState<Prescription | null>(null)
   const [lines, setLines] = useState<PrescriptionLine[]>([])
+  const [progress, setProgress] = useState({ p: 0, status: '' })
+  const [ocrText, setOcrText] = useState('')
+  const [ocrNote, setOcrNote] = useState('')
+
+  /** Autocomplétion : nom commercial → produit de la base PHARMA MED. */
+  const byBrand = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const m of MEDICATIONS) if (!map.has(m.brand)) map.set(m.brand, m.id)
+    return map
+  }, [MEDICATIONS.length])
 
   const cameraRef = useRef<HTMLInputElement>(null)
   const pdfRef = useRef<HTMLInputElement>(null)
@@ -55,37 +66,73 @@ export default function PrescriptionUpload() {
     if (!files.length) return
     setPhase('processing')
     setError('')
+    setOcrNote('')
+    setOcrText('')
+    let fingerprint: string
+    let previews: string[]
+    const raw = files.map((f) => f.file)
     try {
-      const raw = files.map((f) => f.file)
-      const fingerprint = await fingerprintFiles(raw)
-      const previews = (await Promise.all(raw.map((f) => imagePreview(f).catch(() => undefined)))).filter((x): x is string => !!x)
-      const extracted = extractPrescription(fingerprint)
-      const res = registerPrescription({ fingerprint, fileNames: raw.map((f) => f.name), previews, lines: extracted })
+      fingerprint = await fingerprintFiles(raw)
+      previews = (await Promise.all(raw.map((f) => imagePreview(f).catch(() => undefined)))).filter((x): x is string => !!x)
+    } catch {
+      setError('Impossible de lire ce document. Réessayez avec une photo nette ou un PDF.')
+      setPhase('select')
+      return
+    }
+
+    // Anti-doublon AVANT toute lecture : une ordonnance déjà enregistrée est bloquée (et journalisée).
+    if (useStore.getState().prescriptions.some((p) => p.fingerprint === fingerprint)) {
+      const res = registerPrescription({ fingerprint, fileNames: raw.map((f) => f.name), previews, lines: [] })
       if (!res.ok) {
         setDuplicate(res.existing)
         setPhase('duplicate')
         return
       }
-      setCreated(res.prescription)
-      setLines(res.prescription.lines)
-      setPhase('analyzing')
+    }
+
+    // Lecture automatique (OCR) — en cas d'échec, saisie manuelle.
+    let extracted: PrescriptionLine[] = []
+    let note = ''
+    setProgress({ p: 0, status: 'Chargement du moteur de lecture' })
+    setPhase('ocr')
+    try {
+      const res = await readPrescription(raw, (p, status) => setProgress({ p, status }))
+      extracted = res.lines
+      setOcrText(res.text.trim())
+      if (res.unsupported.length && res.unsupported.length === raw.length)
+        note = 'La lecture automatique des PDF n\'est pas encore prise en charge : saisissez les lignes de l\'ordonnance ci-dessous (ou envoyez une photo).'
+      else if (!extracted.length)
+        note = 'Aucune ligne de médicament n\'a pu être lue automatiquement. Saisissez les lignes telles qu\'écrites sur l\'ordonnance.'
+      else if (res.unsupported.length)
+        note = `${res.unsupported.length} PDF non lu(s) automatiquement : ajoutez leurs lignes manuellement.`
     } catch {
-      setError('Impossible de lire ce document. Réessayez avec une photo nette ou un PDF.')
-      setPhase('select')
+      note = 'Le moteur de lecture n\'a pas pu être chargé (connexion internet requise la première fois). Saisissez les lignes manuellement.'
+    }
+
+    const res = registerPrescription({ fingerprint, fileNames: raw.map((f) => f.name), previews, lines: extracted })
+    if (!res.ok) {
+      setDuplicate(res.existing)
+      setPhase('duplicate')
+      return
+    }
+    setCreated(res.prescription)
+    setOcrNote(note)
+    if (res.prescription.lines.length) {
+      setLines(res.prescription.lines)
+      setPhase('detected')
+    } else {
+      setLines([{ id: uid('ln-'), label: '', dosage: '', quantity: 1 }])
+      setPhase('review')
     }
   }
-
-  useEffect(() => {
-    if (phase !== 'analyzing') return
-    const t = setTimeout(() => setPhase('detected'), 2000)
-    return () => clearTimeout(t)
-  }, [phase])
 
   const restart = () => {
     setFiles([])
     setCreated(null)
     setDuplicate(null)
     setLines([])
+    setOcrText('')
+    setOcrNote('')
     setPhase('select')
   }
 
@@ -219,16 +266,20 @@ export default function PrescriptionUpload() {
         </div>
       )}
 
-      {phase === 'analyzing' && (
+      {phase === 'ocr' && (
         <Card className="overflow-hidden py-10 text-center">
           <div className="relative mx-auto mb-4 h-28 w-24 overflow-hidden rounded-xl border-2 border-brand-200 bg-brand-50">
             <div className="absolute inset-x-3 top-4 space-y-2">
               {[80, 60, 90, 50, 70].map((w, i) => <div key={i} className="h-1.5 rounded bg-brand-200" style={{ width: `${w}%` }} />)}
             </div>
-            <div className="absolute inset-x-0 h-1 animate-bounce bg-accent-500 shadow-[0_0_12px_rgba(247,127,0,.8)]" style={{ top: '45%' }} />
+            <div className="absolute inset-x-0 h-1 bg-accent-500 shadow-[0_0_12px_rgba(247,127,0,.8)] transition-all" style={{ top: `${10 + progress.p * 80}%` }} />
           </div>
-          <p className="flex items-center justify-center gap-2 font-bold"><Sparkles size={18} className="text-accent-500" /> Analyse IA en cours…</p>
-          <p className="mt-1 text-sm text-slate-500">Lecture des lignes de l'ordonnance</p>
+          <p className="flex items-center justify-center gap-2 font-bold"><ScanLine size={18} className="text-accent-500" /> Lecture du document… {Math.round(progress.p * 100)} %</p>
+          <p className="mt-1 text-sm text-slate-500">{progress.status}</p>
+          <div className="mx-auto mt-4 h-2 w-56 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${Math.round(progress.p * 100)}%` }} />
+          </div>
+          <p className="mx-auto mt-4 max-w-sm text-xs text-slate-400">La première lecture télécharge le moteur OCR et les données de langue française (quelques Mo).</p>
         </Card>
       )}
 
@@ -241,8 +292,9 @@ export default function PrescriptionUpload() {
           </Card>
 
           <Notice tone="orange" icon={<Sparkles size={16} />} className="mb-4">
-            <b>Analyse automatique (démo) — vérifiez chaque ligne.</b> L'IA ne modifie pas la prescription.
+            <b>Lecture automatique (OCR) — vérifiez chaque ligne</b> ; l'IA ne modifie pas la prescription.
           </Notice>
+          {ocrNote && <Notice tone="blue" icon={<AlertTriangle size={16} />} className="mb-4">{ocrNote}</Notice>}
         </>
       )}
 
@@ -257,12 +309,15 @@ export default function PrescriptionUpload() {
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-500 text-xs font-bold text-white">{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold leading-snug">{l.label}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Quantité : {l.quantity} {med ? `· ${med.presentation}` : ''}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Quantité : {l.quantity} · {med ? <>Correspondance proposée : <b>{medShortName(med)}</b></> : 'Médicament non identifié dans la base'}
+                    </p>
                   </div>
                 </li>
               )
             })}
           </ul>
+          <OcrText text={ocrText} />
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <Button size="lg" onClick={() => setPhase('review')}><Check size={18} /> Vérifier et confirmer</Button>
             <Button size="lg" variant="outline" onClick={() => setPhase('review')}>Corriger une erreur de lecture</Button>
@@ -288,21 +343,21 @@ export default function PrescriptionUpload() {
                 </div>
                 <Input label="Libellé tel qu'écrit sur l'ordonnance" value={l.label} onChange={(e) => patchLine(l.id, { label: e.target.value })} />
                 <div className="mt-2 grid grid-cols-[1fr_6rem] gap-2">
-                  <Select
-                    label="Médicament correspondant"
-                    value={l.medicationId ?? ''}
-                    onChange={(e) => {
-                      const med = medById(e.target.value)
-                      patchLine(l.id, { medicationId: med?.id, dosage: med?.dosage ?? l.dosage })
+                  <MedField
+                    line={l}
+                    resolve={(brand) => byBrand.get(brand)}
+                    onChange={(medicationId) => {
+                      const med = medById(medicationId)
+                      patchLine(l.id, { medicationId: med?.id, dosage: l.dosage || med?.dosage || '', label: l.label.trim() ? l.label : med ? medShortName(med) : l.label })
                     }}
-                  >
-                    <option value="">— Non identifié —</option>
-                    {MEDICATIONS.map((m) => <option key={m.id} value={m.id}>{m.brand}</option>)}
-                  </Select>
+                  />
                   <Input label="Quantité" type="number" min={1} inputMode="numeric" value={l.quantity} onChange={(e) => patchLine(l.id, { quantity: Number(e.target.value) })} />
                 </div>
               </div>
             ))}
+            <datalist id="pharma-med-list">
+              {MEDICATIONS.map((m) => <option key={m.id} value={m.brand} />)}
+            </datalist>
             <Button
               variant="soft"
               className="w-full"
@@ -312,8 +367,9 @@ export default function PrescriptionUpload() {
             </Button>
           </div>
           <Notice tone="blue" className="mt-4">
-            Seuls les médicaments écrits sur l'ordonnance seront achetés. Aucun remplacement n'est effectué sans l'avis du prescripteur ou du pharmacien.
+            Le médicament correspondant sert uniquement à estimer le prix. Seuls les médicaments écrits sur l'ordonnance seront achetés. Aucun remplacement n'est effectué sans l'avis du prescripteur ou du pharmacien.
           </Notice>
+          <OcrText text={ocrText} />
           <Button size="lg" className="mt-4 w-full" onClick={confirm} disabled={!lines.some((l) => l.label.trim())}>
             <Check size={18} /> Confirmer
           </Button>
@@ -338,5 +394,43 @@ function SourceButton({ icon, title, text, onClick, highlight }: { icon: React.R
         <span className={cx('block text-xs', highlight ? 'text-white/80' : 'text-slate-500')}>{text}</span>
       </span>
     </button>
+  )
+}
+
+function OcrText({ text }: { text: string }) {
+  if (!text) return null
+  return (
+    <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+      <summary className="cursor-pointer font-semibold text-slate-600">Texte lu sur le document (OCR brut)</summary>
+      <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap font-mono text-xs text-slate-600">{text}</pre>
+    </details>
+  )
+}
+
+/** Champ d'autocomplétion du médicament (base PHARMA MED). */
+function MedField({ line, resolve, onChange }: { line: PrescriptionLine; resolve: (brand: string) => string | undefined; onChange: (medicationId?: string) => void }) {
+  const med = medById(line.medicationId)
+  const [text, setText] = useState(med?.brand ?? '')
+  return (
+    <div>
+      <Input
+        label="Médicament correspondant"
+        list="pharma-med-list"
+        placeholder="Rechercher dans la base…"
+        value={text}
+        onChange={(e) => {
+          const v = e.target.value
+          setText(v)
+          const id = resolve(v)
+          if (id) onChange(id)
+          else if (!v.trim()) onChange(undefined)
+        }}
+      />
+      <p className="mt-1 text-xs text-slate-500">
+        {med
+          ? med.price ? `Prix publié : ${fcfa(med.price.amount)}` : 'Prix non publié'
+          : text.trim() ? 'Choisissez un produit dans la liste proposée' : 'Non identifié'}
+      </p>
+    </div>
   )
 }

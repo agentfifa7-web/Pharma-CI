@@ -10,7 +10,7 @@ import { Notice, PageHeader, Stat, cx } from '../../components/ui'
 import type { LatLng } from '../../types'
 import { BarList, DataTable, Panel, Td } from './adminKit'
 
-/** Seuils de couverture (pharmacies pour 100 000 habitants) — valeurs de démonstration. */
+/** Seuils de couverture (pharmacies pour 100 000 habitants) — paramètres de pilotage PHARMA CI. */
 const LOW = 0.8
 const GOOD = 2
 
@@ -71,7 +71,14 @@ export default function AdminData() {
       }).sort((a, b) => a.per100k - b.per100k),
     [],
   )
-  const maxCov = Math.max(...coverage.map((c) => Math.min(c.per100k, 5)))
+  const hasPopulation = coverage.length > 0
+  const maxCov = Math.max(0.01, ...coverage.map((c) => Math.min(c.per100k, 5)))
+  /** Pharmacies référencées par commune (données réelles, sans population). */
+  const pharmaciesByCommune = useMemo(() => {
+    const m = new Map<string, number>()
+    PHARMACIES.forEach((p) => m.set(p.commune || '—', (m.get(p.commune || '—') ?? 0) + 1))
+    return [...m.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
+  }, [])
   const levelCounts = (['faible', 'moyenne', 'bonne'] as Level[]).map((l) => ({ l, n: coverage.filter((c) => c.level === l).length }))
 
   const markers: MapMarker[] = coverage.map((c) => ({
@@ -83,7 +90,7 @@ export default function AdminData() {
     popup: (
       <div>
         <p className="font-bold">{c.name}</p>
-        <p className="text-xs">{c.n} pharmacie(s) · ~{c.population.toLocaleString('fr-FR')} hab.</p>
+        <p className="text-xs">{c.n} pharmacie(s) · {c.population.toLocaleString('fr-FR')} hab.</p>
         <p className="text-xs font-semibold">{LEVEL[c.level].icon} {c.per100k.toFixed(2).replace('.', ',')} / 100 000 hab. — couverture {LEVEL[c.level].label.toLowerCase()}</p>
       </div>
     ),
@@ -107,7 +114,13 @@ export default function AdminData() {
           icon={<Clock size={20} />}
           tone="accent"
         />
-        <Stat label="Zones sous-desservies" value={levelCounts[0]!.n} hint={`sur ${COMMUNES.length} communes`} icon={<MapIcon size={20} />} tone="red" />
+        <Stat
+          label="Zones sous-desservies"
+          value={hasPopulation ? levelCounts[0]!.n : '—'}
+          hint={hasPopulation ? `sur ${coverage.length} communes` : 'populations officielles à importer'}
+          icon={<MapIcon size={20} />}
+          tone="red"
+        />
       </div>
 
       <div className="mb-5 grid gap-5 lg:grid-cols-3">
@@ -117,6 +130,22 @@ export default function AdminData() {
       </div>
 
       <h2 className="mb-1 text-base font-bold">Cartographie des zones sous-desservies</h2>
+      {!hasPopulation ? (
+        <div className="mb-5 grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+          <Notice tone="blue" icon={<MapIcon size={16} />}>
+            <p className="font-bold">Populations officielles (RGPH/INS) à importer pour calculer la couverture</p>
+            <p className="mt-1">
+              La couverture (pharmacies pour 100 000 habitants) exige la population de chaque commune. Aucune population n'est encore importée :
+              aucun indicateur n'est calculé pour éviter des chiffres inexacts. Renseignez les populations issues du dernier recensement (RGPH, Institut national de la statistique)
+              dans <code className="rounded bg-white/60 px-1">src/data/communes.ts</code>.
+            </p>
+          </Notice>
+          <Panel title={`Pharmacies référencées par commune (${PHARMACIES.length})`}>
+            <BarList data={pharmaciesByCommune.slice(0, 15)} empty="Annuaire des pharmacies non chargé." />
+          </Panel>
+        </div>
+      ) : (
+        <>
       <p className="mb-3 text-sm text-slate-500">
         Pharmacies pour 100 000 habitants : {LEVEL.faible.icon} faible (&lt; {String(LOW).replace('.', ',')}) · {LEVEL.moyenne.icon} moyenne ({String(LOW).replace('.', ',')}–{GOOD}) · {LEVEL.bonne.icon} bonne (≥ {GOOD}).
       </p>
@@ -127,7 +156,7 @@ export default function AdminData() {
             {coverage.map((c) => {
               const L = LEVEL[c.level]
               return (
-                <li key={c.name} title={`${c.name} : ${c.n} pharmacie(s) pour ~${c.population.toLocaleString('fr-FR')} habitants`}>
+                <li key={c.name} title={`${c.name} : ${c.n} pharmacie(s) pour ${c.population.toLocaleString('fr-FR')} habitants`}>
                   <div className="mb-0.5 flex items-baseline justify-between gap-2 text-sm">
                     <span className="truncate">{c.name} <span className="text-xs text-slate-400">· {c.city}</span></span>
                     <span className="flex shrink-0 items-center gap-2">
@@ -152,7 +181,7 @@ export default function AdminData() {
 
       <details className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
         <summary className="cursor-pointer font-semibold">Voir les données en tableau</summary>
-        <DataTable head={['Commune', 'Ville', 'Pharmacies', 'Population (approx.)', 'Pour 100 000 hab.', 'Couverture']} className="mt-3 border-0 shadow-none">
+        <DataTable head={['Commune', 'Ville', 'Pharmacies', 'Population (officielle)', 'Pour 100 000 hab.', 'Couverture']} className="mt-3 border-0 shadow-none">
           {coverage.map((c) => (
             <tr key={c.name}>
               <Td>{c.name}</Td><Td>{c.city}</Td><Td className="tabular-nums">{c.n}</Td>
@@ -164,8 +193,11 @@ export default function AdminData() {
         </DataTable>
       </details>
 
+        </>
+      )}
+
       <Notice tone="orange">
-        Données de démonstration : l'annuaire est un jeu d'exemple et les populations sont <strong>approximatives</strong> (à remplacer par les données officielles de l'INS).
+        Statistiques calculées à partir des données réelles de cette application (missions, ordonnances) et de l'annuaire public des pharmacies.
         En production, les statistiques sont calculées côté serveur avec seuils d'anonymisation (k-anonymat) avant toute diffusion à des partenaires institutionnels.
       </Notice>
     </div>

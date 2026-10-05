@@ -6,4 +6,4 @@ export type PharmacyMeta = {
   garde?: { start: string; end: string; label: string }
 }
 
-export const PHARMACY_META: PharmacyMeta = { live: false, label: 'Données de démonstration' }
+export const PHARMACY_META: PharmacyMeta = { live: false, label: 'Annuaire non chargé' }

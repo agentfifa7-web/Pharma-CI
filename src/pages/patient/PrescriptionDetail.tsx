@@ -19,6 +19,7 @@ export default function PrescriptionDetail() {
   const agents = useStore((s) => s.agents)
   const profiles = useStore((s) => s.profiles)
   const user = useStore((s) => s.user)
+  const locationGranted = useStore((s) => s.locationGranted)
   const logAccess = useStore((s) => s.logAccess)
   const confirmPrescription = useStore((s) => s.confirmPrescription)
   const requestRenewal = useStore((s) => s.requestRenewal)
@@ -31,7 +32,7 @@ export default function PrescriptionDetail() {
   const agent = mission?.agentId ? agents.find((a) => a.id === mission.agentId) : undefined
   const profile = profiles.find((x) => x.id === p?.profileId)
 
-  const [address, setAddress] = useState(user.address)
+  const [address, setAddress] = useState(user.address ?? '')
   const [method, setMethod] = useState(PAYMENT_METHODS[0]!.id)
   const [paying, setPaying] = useState(false)
   const [zoom, setZoom] = useState<string | null>(null)
@@ -154,13 +155,15 @@ export default function PrescriptionDetail() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold leading-snug">{l.label}</p>
                   <p className="mt-0.5 text-xs text-slate-500">Quantité : {l.quantity}{med && <> · <Link to={`/medicaments/${med.id}`} className="text-brand-600 hover:underline">{med.brand}</Link></>}</p>
-                  {med ? (
+                  {med?.price ? (
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
                       <PriceLevelBadge level={med.price.level} />
                       <span className="text-xs font-semibold text-slate-600">≈ {fcfa(med.price.amount * Math.max(1, l.quantity))}</span>
                     </div>
                   ) : (
-                    <p className="mt-1 text-xs text-amber-700">Non identifié dans la base — forfait estimatif appliqué</p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      {med ? 'Prix non publié' : 'Non identifié dans la base'} — montant à confirmer par la facture de la pharmacie
+                    </p>
                   )}
                 </div>
               </div>
@@ -174,17 +177,24 @@ export default function PrescriptionDetail() {
         <Section title="Estimation de la mission">
           <Card className="border-brand-200">
             <dl className="space-y-2 text-sm">
-              <Row label="💊 Médicaments estimés" value={fcfa(estimate.medications)} />
+              <Row
+                label="💊 Médicaments estimés"
+                value={estimate.priced === 0 ? 'À confirmer' : `${fcfa(estimate.medications)}${estimate.unknown > 0 ? ' + à confirmer' : ''}`}
+              />
               <Row label="🧑🏾‍💼 Service PHARMA CI" value={fcfa(estimate.service)} />
               <Row label={`🚚 Livraison${nearest ? ` (depuis ${nearest.name})` : ''}`} value={fcfa(estimate.delivery)} />
               <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-2 text-base font-extrabold">
-                <dt>Total estimé</dt><dd className="tabular-nums">{fcfa(estimate.total)}</dd>
+                <dt>Total estimé{estimate.unknown > 0 ? ' (hors lignes à confirmer)' : ''}</dt><dd className="tabular-nums">{fcfa(estimate.total)}</dd>
               </div>
             </dl>
             <Notice tone="orange" className="mt-3 text-xs">
               Le montant des médicaments est estimatif lorsqu'il n'a pas été confirmé par une pharmacie. Le montant définitif des médicaments correspond à la facture émise par la pharmacie.
             </Notice>
-            {estimate.unknown > 0 && <p className="mt-2 text-xs text-slate-500">{estimate.unknown} ligne(s) non identifiée(s) : forfait de 2 500 FCFA appliqué à l'estimation.</p>}
+            {estimate.unknown > 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                {estimate.unknown} ligne(s) sans prix publié : montant à confirmer par la facture de la pharmacie.
+              </p>
+            )}
           </Card>
 
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -199,8 +209,9 @@ export default function PrescriptionDetail() {
           </div>
 
           <Card className="mt-3">
-            <Input label="Adresse de livraison" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Quartier, rue, repère…" />
-            <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><MapPin size={12} /> Position GPS enregistrée utilisée pour le suivi.</p>
+            <Input label="Adresse de livraison (obligatoire)" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Commune, quartier, rue, repère…" />
+            {!address.trim() && <p className="mt-1 text-xs font-semibold text-amber-700">Saisissez l'adresse où l'agent doit livrer pour lancer la mission.</p>}
+            <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><MapPin size={12} /> {locationGranted ? 'Votre position GPS est utilisée pour le suivi.' : 'Localisation non activée : l\'agent se guidera sur l\'adresse saisie.'}</p>
 
             <p className="mt-4 mb-2 text-sm font-semibold text-slate-700">Moyen de paiement</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

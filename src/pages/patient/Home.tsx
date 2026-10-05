@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight, Bell, Bot, ChevronRight, ClipboardList, FileText, Map, Pill, ScanLine, Search, Siren, Stethoscope, Truck, Clock,
 } from 'lucide-react'
-import { useActiveProfile, useStore, MISSION_LABEL } from '../../store/useStore'
+import { useStore, MISSION_LABEL } from '../../store/useStore'
 import { usePharmacies } from '../../lib/usePharmacies'
 import PharmacyCard from '../../components/PharmacyCard'
 import { Badge, Card, Section, cx } from '../../components/ui'
@@ -17,7 +17,7 @@ const TILES: { to: string; emoji: string; label: string; hint: string; tone: str
   { to: '/missions', emoji: '🚚', label: 'Suivre ma commande', hint: 'Mission en temps réel', tone: 'from-violet-50 to-white' },
   { to: '/traitements', emoji: '💊', label: 'Mes médicaments', hint: 'Rappels de prise', tone: 'from-emerald-50 to-white' },
   { to: '/cmu', emoji: '🛡️', label: 'CMU & assurances', hint: 'Prise en charge', tone: 'from-sky-50 to-white' },
-  { to: '/actualites', emoji: '📰', label: 'Actualités santé', hint: 'Informations vérifiées', tone: 'from-slate-100 to-white' },
+  { to: '/actualites', emoji: '📰', label: 'Actualités santé', hint: 'Sources citées', tone: 'from-slate-100 to-white' },
   { to: '/conseils', emoji: '👨🏾‍⚕️', label: 'Conseils santé', hint: 'Prévention au quotidien', tone: 'from-amber-50 to-white' },
   { to: '/reglementation', emoji: '⚖️', label: 'Réglementation', hint: 'Vos droits, les règles', tone: 'from-violet-50 to-white' },
 ]
@@ -38,6 +38,8 @@ const QUICK = [
   { to: '/sante', label: 'Autres services', icon: <Stethoscope size={18} /> },
 ]
 
+const greeting = (firstName: string) => (firstName ? `Bonjour ${firstName} 👋` : 'Bonjour 👋')
+
 function SeniorHome({ firstName }: { firstName: string }) {
   const big = [
     { to: '/traitements', emoji: '💊', label: 'Mes traitements', tone: 'bg-brand-500 text-white' },
@@ -49,7 +51,7 @@ function SeniorHome({ firstName }: { firstName: string }) {
   ]
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-3xl font-extrabold tracking-tight">Bonjour {firstName} 👋</h1>
+      <h1 className="text-3xl font-extrabold tracking-tight">{greeting(firstName)}</h1>
       <p className="mt-1 text-lg text-slate-600">Que souhaitez-vous faire ?</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {big.map((b) => (
@@ -65,13 +67,14 @@ function SeniorHome({ firstName }: { firstName: string }) {
 }
 
 export default function Home() {
-  const profile = useActiveProfile()
+  const userName = useStore((s) => s.user.name)
   const seniorMode = useStore((s) => s.seniorMode)
   const missions = useStore((s) => s.missions)
   const pharmacies = usePharmacies()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
-  const firstName = profile.name.split(' ')[0] ?? profile.name
+  const named = userName.trim() && userName.trim() !== 'Moi' ? userName.trim() : ''
+  const firstName = named.split(/\s+/)[0] ?? ''
 
   const active = useMemo(() => missions.filter((m) => m.status !== 'livree' && m.status !== 'annulee'), [missions])
   const garde = useMemo(() => pharmacies.filter((p) => p.onGarde).slice(0, 3), [pharmacies])
@@ -90,7 +93,10 @@ export default function Home() {
         <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10" />
         <div className="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-accent-500/25 blur-2xl" />
         <div className="relative">
-          <p className="text-sm font-semibold text-white/80">Bonjour {firstName} 👋</p>
+          <p className="text-sm font-semibold text-white/80">
+            {greeting(firstName)}
+            {!named && <> · <Link to="/profil" className="underline decoration-white/50 hover:decoration-white">Complétez votre profil</Link></>}
+          </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-4xl">Que recherchez-vous ?</h1>
           <form onSubmit={submit} className="mt-5 flex items-center gap-2 rounded-2xl bg-white p-1.5 shadow-xl shadow-brand-900/20">
             <Search size={20} className="ml-2 shrink-0 text-slate-400" />

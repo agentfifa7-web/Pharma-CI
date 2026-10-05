@@ -14,13 +14,23 @@ type BarcodeDetectorCtor = new (opts?: { formats: string[] }) => BarcodeDetector
 
 type Result =
   | { kind: 'conforme' | 'rappele'; med: Medication; lot: string; expiry: string }
+  | { kind: 'produit'; med: Medication; code: string }
   | { kind: 'inconnu'; code: string }
 
-const DEMO_LOTS = ['PCM24A118', 'AMX500B199', 'ALU24K502', 'XYZ000']
+let CODES: { src: Medication | undefined; map: Map<string, Medication> } = { src: undefined, map: new Map() }
+function byCode(code: string) {
+  if (CODES.src !== MEDICATIONS[0]) {
+    const map = new Map<string, Medication>()
+    for (const m of MEDICATIONS) if (m.code) map.set(m.code, m)
+    CODES = { src: MEDICATIONS[0], map }
+  }
+  return CODES.map.get(code)
+}
 
 function lookup(raw: string): Result {
   const code = raw.trim()
   const n = normalize(code).replace(/[^a-z0-9]/g, '')
+  // 1. Lots connus (aucune base officielle importée pour l'instant : liste vide).
   for (const med of MEDICATIONS) {
     for (const l of med.lots) {
       const ln = normalize(l.lot)
@@ -30,13 +40,17 @@ function lookup(raw: string): Result {
       }
     }
   }
+  // 2. Code produit publié par la source (ex. 3258453).
+  const med = byCode(n)
+  if (med) return { kind: 'produit', med, code: n }
   return { kind: 'inconnu', code }
 }
 
 export default function Scan() {
   const [params] = useSearchParams()
-  const [code, setCode] = useState(params.get('lot') ?? '')
-  const [result, setResult] = useState<Result | null>(params.get('lot') ? lookup(params.get('lot')!) : null)
+  const initial = params.get('lot') ?? params.get('code') ?? ''
+  const [code, setCode] = useState(initial)
+  const [result, setResult] = useState<Result | null>(initial ? lookup(initial) : null)
   const [scanning, setScanning] = useState(false)
   const [camError, setCamError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -84,7 +98,7 @@ export default function Scan() {
         }
         void tick()
       } catch {
-        setCamError('Impossible d\'accéder à la caméra. Vérifiez les autorisations ou saisissez le numéro de lot.')
+        setCamError('Impossible d\'accéder à la caméra. Vérifiez les autorisations ou saisissez le code manuellement.')
         stop()
       }
     }
@@ -99,17 +113,17 @@ export default function Scan() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="SCAN PHARMA" subtitle="Vérifier un médicament par son lot ou son code" icon={<ScanLine size={22} />} />
+      <PageHeader title="SCAN PHARMA" subtitle="Retrouver un médicament par son code produit" icon={<ScanLine size={22} />} />
 
       <Card className="mb-4">
         <form onSubmit={(e) => { e.preventDefault(); check(code) }} className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-semibold text-slate-700">Code QR / DataMatrix, numéro de lot ou référence</span>
+            <span className="mb-1 block text-sm font-semibold text-slate-700">Code produit, numéro de lot ou code QR / DataMatrix</span>
             <div className="flex gap-2">
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="Ex. PCM24A118"
+                placeholder="Ex. 3258453"
                 className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 font-mono text-sm uppercase outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10"
               />
               <Button type="submit" disabled={!code.trim()}><Search size={16} /><span className="hidden sm:inline">Vérifier</span></Button>
@@ -128,25 +142,21 @@ export default function Scan() {
             </Button>
           )}
           {camError === 'unsupported' ? (
-            <Notice tone="blue">Le scan par caméra n'est pas pris en charge par ce navigateur. Saisissez le numéro de lot imprimé sur la boîte (souvent après « Lot » ou « LOT »).</Notice>
+            <Notice tone="blue">Le scan par caméra n'est pas pris en charge par ce navigateur. Saisissez le code manuellement.</Notice>
           ) : camError ? <Notice tone="orange">{camError}</Notice> : null}
         </form>
 
-        <div className="mt-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Lots de démonstration</p>
-          <div className="flex flex-wrap gap-2">
-            {DEMO_LOTS.map((l) => (
-              <button key={l} onClick={() => check(l)} className="rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold text-slate-700 hover:bg-slate-200">{l}</button>
-            ))}
-          </div>
-        </div>
+        <Notice tone="blue" className="mt-4">
+          <b>Aucune base officielle de lots n'est encore connectée.</b> SCAN PHARMA ne peut donc pas certifier l'authenticité d'un lot.
+          Vous pouvez en revanche retrouver un produit par son <b>code produit</b> (liste des prix publiée sur pharmacies-de-garde.ci).
+        </Notice>
       </Card>
 
       {result?.kind === 'conforme' && (
         <div className="rounded-3xl border-2 border-emerald-300 bg-emerald-50 p-5">
           <p className="text-4xl">✅</p>
           <p className="mt-2 text-lg font-extrabold text-emerald-800">Lot conforme</p>
-          <p className="text-sm text-emerald-900">Le lot <b className="font-mono">{result.lot}</b> correspond à <b>{result.med.brand}</b> et ne fait l'objet d'aucune alerte connue (démo).</p>
+          <p className="text-sm text-emerald-900">Le lot <b className="font-mono">{result.lot}</b> correspond à <b>{result.med.brand}</b> et ne fait l'objet d'aucune alerte connue.</p>
           <p className="mt-1 text-sm text-emerald-900">Péremption : <b>{result.expiry}</b> — vérifiez aussi la date sur la boîte.</p>
           <ButtonLink to={`/medicaments/${result.med.id}`} variant="primary" className="mt-3">Voir la fiche</ButtonLink>
         </div>
@@ -156,11 +166,29 @@ export default function Scan() {
         <div className="rounded-3xl border-2 border-red-300 bg-red-50 p-5">
           <p className="text-4xl">🚨</p>
           <p className="mt-2 text-lg font-extrabold text-red-800">Lot rappelé</p>
-          <p className="text-sm text-red-900">Le lot <b className="font-mono">{result.lot}</b> de <b>{result.med.brand}</b> fait l'objet d'un rappel (exemple de démonstration).</p>
+          <p className="text-sm text-red-900">Le lot <b className="font-mono">{result.lot}</b> de <b>{result.med.brand}</b> fait l'objet d'un rappel.</p>
           <p className="mt-1 text-sm text-red-900">Ne l'utilisez pas et rapportez-le à votre pharmacie. N'interrompez pas un traitement sans avis : votre pharmacien vous orientera.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <ButtonLink to="/alertes" variant="danger">{matchedAlert ? 'Voir l\'alerte' : 'Alertes médicaments'}</ButtonLink>
             <ButtonLink to={`/vigilance?med=${result.med.id}`} variant="outline">Signaler</ButtonLink>
+          </div>
+        </div>
+      )}
+
+      {result?.kind === 'produit' && (
+        <div className="rounded-3xl border-2 border-brand-200 bg-brand-50 p-5">
+          <p className="text-4xl">💊</p>
+          <p className="mt-2 text-lg font-extrabold text-brand-800">Produit identifié</p>
+          <p className="text-sm text-slate-700">
+            Le code <b className="font-mono">{result.code}</b> correspond à <b>{result.med.brand}</b>
+            {result.med.therapeuticClass && <> ({result.med.therapeuticClass})</>} dans la liste des prix publiée par pharmacies-de-garde.ci.
+          </p>
+          <p className="mt-1 text-sm text-slate-700">
+            Ce code identifie le produit, pas la boîte : il ne garantit pas son authenticité. Vérifiez l'emballage (aspect, date de péremption, numéro de lot) et achetez vos médicaments en pharmacie.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <ButtonLink to={`/medicaments/${result.med.id}`} variant="primary">Voir la fiche</ButtonLink>
+            <ButtonLink to={`/vigilance?med=${result.med.id}`} variant="outline">Signaler un produit suspect</ButtonLink>
           </div>
         </div>
       )}
@@ -170,8 +198,8 @@ export default function Scan() {
           <p className="text-4xl">⚠️</p>
           <p className="mt-2 text-lg font-extrabold text-amber-800">Code non trouvé</p>
           <p className="text-sm text-amber-900">
-            « <span className="break-all font-mono">{result.code}</span> » n'a pas été trouvé dans les bases autorisées. Cela ne signifie pas forcément que le produit est falsifié :
-            demandez conseil à un pharmacien et signalez-le si vous le trouvez suspect (emballage, aspect, lieu d'achat).
+            « <span className="break-all font-mono">{result.code}</span> » ne correspond à aucun code produit de la base PHARMA MED. Aucune base officielle de lots n'est encore connectée :
+            cela ne signifie pas que le produit est falsifié. Vérifiez l'emballage, demandez conseil à un pharmacien et signalez-le si vous le trouvez suspect (emballage, aspect, lieu d'achat).
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <ButtonLink to="/pharmacies" variant="accent">Trouver un pharmacien</ButtonLink>
@@ -181,7 +209,7 @@ export default function Scan() {
       )}
 
       <Notice tone="blue" className="mt-5">
-        Vérification de démonstration à partir de lots d'exemple. En production, SCAN PHARMA interrogera les bases officielles de traçabilité. Consultez aussi les <Link to="/alertes" className="font-semibold underline">alertes médicaments</Link>.
+        La vérification des lots sera disponible lorsqu'une base officielle de traçabilité (AIRP, ministère de la Santé) sera connectée. En attendant, consultez les <Link to="/alertes" className="font-semibold underline">alertes médicaments</Link>.
       </Notice>
     </div>
   )

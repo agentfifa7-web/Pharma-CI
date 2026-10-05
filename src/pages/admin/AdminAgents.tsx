@@ -6,7 +6,7 @@ import { COMMUNES } from '../../data/communes'
 import { rankAgents } from '../../lib/assign'
 import { distanceKm, formatDistance, travelMinutes } from '../../lib/geo'
 import { fcfa } from '../../lib/format'
-import { Badge, Card, PageHeader, Select, Stat, cx } from '../../components/ui'
+import { Badge, Card, Notice, PageHeader, Select, Stat, cx } from '../../components/ui'
 import { DataTable, Panel, Td } from './adminKit'
 
 const VEHICLE_EMOJI = { moto: '🏍️', voiture: '🚗', velo: '🚲', a_pied: '🚶🏾' } as const
@@ -32,16 +32,22 @@ export default function AdminAgents() {
 
   const available = agents.filter((a) => a.available).length
   const active = agents.reduce((s, a) => s + a.activeMissions, 0)
-  const avgRating = agents.reduce((s, a) => s + a.rating, 0) / Math.max(1, agents.length)
+  const rated = agents.filter((a) => a.rating > 0)
+  const avgRating = rated.length ? rated.reduce((s, a) => s + a.rating, 0) / rated.length : undefined
 
   return (
     <div>
       <PageHeader title="Agents PHARMA CI" subtitle="Disponibilités, performances et affectation automatique" icon={<Bike />} />
 
+      <Notice tone="orange" className="mb-5">
+        <b>Comptes agents de test</b> — aucun agent réel n'est encore enregistré. Ces comptes servent uniquement à essayer le parcours de mission ;
+        leurs statistiques ne reflètent que les missions effectuées dans cette application.
+      </Notice>
+
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Disponibles" value={<>{available}<span className="text-base text-slate-400">/{agents.length}</span></>} icon={<Bike size={20} />} />
         <Stat label="Missions en cours" value={active} icon={<Gauge size={20} />} tone="accent" />
-        <Stat label="Note moyenne" value={avgRating.toFixed(2).replace('.', ',')} icon={<Star size={20} />} tone="slate" />
+        <Stat label="Note moyenne" value={avgRating === undefined ? '—' : avgRating.toFixed(2).replace('.', ',')} hint={avgRating === undefined ? 'aucune évaluation' : `${rated.length} agent(s) évalué(s)`} icon={<Star size={20} />} tone="slate" />
         <Stat label="Missions réalisées" value={agents.reduce((s, a) => s + a.completed, 0)} tone="slate" />
       </div>
 
@@ -51,13 +57,13 @@ export default function AdminAgents() {
             <Td>
               <div className="flex items-center gap-2">
                 <span className={cx('grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-white', a.available ? 'bg-brand-500' : 'bg-slate-400')}>{a.photo}</span>
-                <div><p className="font-semibold whitespace-nowrap">{a.name}</p><p className="text-xs text-slate-400">{a.phone}</p></div>
+                <div><p className="flex items-center gap-1.5 font-semibold whitespace-nowrap">{a.name} <Badge tone="orange">Test</Badge></p><p className="text-xs text-slate-400">{a.phone || 'Téléphone non renseigné'}</p></div>
               </div>
             </Td>
             <Td>{a.zone}</Td>
             <Td className="whitespace-nowrap">{VEHICLE_EMOJI[a.vehicle]} {VEHICLE_LABEL[a.vehicle]}</Td>
             <Td className="tabular-nums">{a.activeMissions}/3</Td>
-            <Td className="tabular-nums">⭐ {a.rating.toFixed(1)}</Td>
+            <Td className="tabular-nums">{a.rating > 0 ? `⭐ ${a.rating.toFixed(1)}` : '—'}</Td>
             <Td className="tabular-nums">{a.completed}</Td>
             <Td className="tabular-nums whitespace-nowrap">{fcfa(a.earnings)}</Td>
             <Td>
@@ -93,7 +99,7 @@ export default function AdminAgents() {
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{r.agent.name} {i === 0 && <Badge tone="green">Affecté(e)</Badge>} {r.km > 25 && <Badge tone="red">hors zone (&gt; 25 km)</Badge>}</p>
                       <p className="text-xs text-slate-500">
-                        {VEHICLE_EMOJI[r.agent.vehicle]} {VEHICLE_LABEL[r.agent.vehicle]} · zone {r.agent.zone} · {r.agent.activeMissions} mission(s) · ⭐ {r.agent.rating.toFixed(1)}
+                        {VEHICLE_EMOJI[r.agent.vehicle]} {VEHICLE_LABEL[r.agent.vehicle]} · zone {r.agent.zone} · {r.agent.activeMissions} mission(s){r.agent.rating > 0 ? ` · ⭐ ${r.agent.rating.toFixed(1)}` : ' · non évalué'}
                       </p>
                     </div>
                     <div className="grid grid-cols-3 gap-3 text-right text-xs">

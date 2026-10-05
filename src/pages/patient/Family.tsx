@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Check, HeartHandshake, Pencil, Plus, Trash2, UserRound, Users } from 'lucide-react'
 import type { FamilyProfile } from '../../types'
 import { useStore } from '../../store/useStore'
@@ -41,10 +42,20 @@ export default function Family() {
   }
 
   const editingSelf = editing !== 'new' && profiles.find((p) => p.id === editing)?.relation === 'moi'
+  const selfUnnamed = profiles.some((p) => p.relation === 'moi' && p.name.trim() === 'Moi')
 
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Dossier familial" subtitle="Gérez les ordonnances et traitements de vos proches." icon={<Users size={22} />} action={<Button size="sm" onClick={() => open()}><Plus size={16} /><span className="hidden sm:inline">Ajouter</span></Button>} />
+
+      {selfUnnamed && (
+        <Notice tone="orange" className="mb-4">
+          Votre profil porte encore le nom par défaut « Moi ». <Link to="/profil" className="font-semibold underline">Complétez votre profil</Link> (nom, téléphone, adresse) ou modifiez-le ci-dessous.
+        </Notice>
+      )}
+      {profiles.length <= 1 && (
+        <p className="mb-3 text-sm text-slate-600">Aucun proche ajouté pour l'instant. Ajoutez un enfant, un parent ou un conjoint pour gérer ses ordonnances.</p>
+      )}
 
       <Section title="Profils">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -110,7 +121,7 @@ export default function Family() {
             </Select>
             <Input label="Année de naissance" type="number" inputMode="numeric" min={1900} max={new Date().getFullYear()} value={draft.birthYear} onChange={(e) => setDraft({ ...draft, birthYear: e.target.value })} />
           </div>
-          <Input label="Proche autorisé (Espace senior)" value={draft.caregiver} onChange={(e) => setDraft({ ...draft, caregiver: e.target.value })} placeholder="Ex. Awa Koné — 07 00 00 00 00" />
+          <Input label="Proche autorisé (Espace senior)" value={draft.caregiver} onChange={(e) => setDraft({ ...draft, caregiver: e.target.value })} placeholder="Nom et téléphone du proche" />
           <label className="flex items-start gap-2.5 rounded-xl bg-slate-50 p-3 text-sm">
             <input type="checkbox" checked={draft.consent} onChange={(e) => setDraft({ ...draft, consent: e.target.checked })} className="mt-0.5 h-5 w-5 shrink-0 accent-brand-500" />
             <span>Je certifie avoir l'accord de cette personne (ou être son représentant légal) pour gérer ses ordonnances et données de santé sur PHARMA CI.</span>

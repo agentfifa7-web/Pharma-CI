@@ -32,13 +32,14 @@ export default function AgentDashboard() {
             <div className="min-w-0">
               <p className="truncate text-lg font-bold">{agent.name}</p>
               <p className="flex flex-wrap items-center gap-x-2 text-sm text-slate-500">
-                <span className="flex items-center gap-1"><Star size={13} className="fill-accent-400 text-accent-400" /> {agent.rating.toFixed(1)}</span>
+                <Badge tone="orange">Compte de test</Badge>
+                <span className="flex items-center gap-1"><Star size={13} className="fill-accent-400 text-accent-400" /> {agent.rating > 0 ? agent.rating.toFixed(1) : 'Non évalué'}</span>
                 <span>· {VEHICLE_LABEL[agent.vehicle]}</span>
                 <span className="flex items-center gap-0.5">· <MapPin size={12} /> {agent.zone}</span>
               </p>
             </div>
           </div>
-          <Select label="Démo : je suis l'agent…" value={agent.id} onChange={(e) => setCurrentAgent(e.target.value)} className="sm:w-60">
+          <Select label="Compte de test utilisé" value={agent.id} onChange={(e) => setCurrentAgent(e.target.value)} className="sm:w-60">
             {agents.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.zone})</option>)}
           </Select>
         </div>
@@ -69,7 +70,7 @@ export default function AgentDashboard() {
       </div>
 
       <Notice tone="blue" icon={<Info size={16} />} className="mb-5">
-        <b>{pending} mission{pending > 1 ? 's' : ''} en attente d'affectation.</b> En démo, l'affectation est automatique (agent disponible le plus proche, charge et note prises en compte).
+        <b>{pending} mission{pending > 1 ? 's' : ''} en attente d'affectation.</b> L'affectation est automatique (agent disponible le plus proche, charge et note prises en compte). Les agents actuels sont des comptes de test.
       </Notice>
 
       <Section title="Mes missions en cours" action={<Link to="/agent/missions" className="text-sm font-semibold text-brand-600 hover:underline">Tout voir</Link>}>

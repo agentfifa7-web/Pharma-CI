@@ -3,10 +3,10 @@ import { createRoot } from 'react-dom/client'
 import 'leaflet/dist/leaflet.css'
 import './index.css'
 import App from './App.tsx'
-import { loadPharmacies } from './services/pharmacyProvider'
+import { loadAllData } from './services/pharmacyProvider'
 
-// L'annuaire synchronisé est chargé avant le premier rendu (repli automatique sur la démo).
-void loadPharmacies().finally(() =>
+// L'annuaire synchronisé est chargé avant le premier rendu (toutes les données proviennent des fichiers synchronisés).
+void loadAllData().finally(() =>
   createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

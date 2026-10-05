@@ -282,7 +282,7 @@ function InvoiceForm({ mission, prescription, pharmacy }: { mission: Mission; pr
   const [lines, setLines] = useState<DraftLine[]>(() =>
     prescription.lines.map((l) => {
       const med = medById(l.medicationId)
-      return { label: l.label, quantity: l.quantity, amount: med ? med.price.amount * Math.max(1, l.quantity) : 0, obtained: true }
+      return { label: l.label, quantity: l.quantity, amount: med?.price ? med.price.amount * Math.max(1, l.quantity) : 0, obtained: true }
     }),
   )
   const total = lines.reduce((s, l) => s + (l.obtained ? l.amount || 0 : 0), 0)
@@ -311,9 +311,8 @@ function InvoiceForm({ mission, prescription, pharmacy }: { mission: Mission; pr
           <button onClick={() => fileRef.current?.click()} className="absolute right-2 bottom-2 rounded-lg bg-white/95 px-3 py-1.5 text-xs font-semibold shadow">Reprendre</button>
         </div>
       ) : (
-        <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-          <Button size="lg" variant="outline" className="border-dashed" onClick={() => fileRef.current?.click()}><Camera size={18} /> 📸 Photographier la facture</Button>
-          <Button variant="ghost" size="sm" onClick={() => setPhoto(demoInvoiceImage(name || 'Pharmacie', lines))}>Photo de démo</Button>
+        <div className="mb-3">
+          <Button size="lg" variant="outline" className="w-full border-dashed" onClick={() => fileRef.current?.click()}><Camera size={18} /> 📸 Photographier la facture originale</Button>
         </div>
       )}
 
@@ -450,40 +449,4 @@ function DeliveryPanel({ mission }: { mission: Mission }) {
       <Link to="/agent" className="mt-2 block text-center text-xs text-slate-400 hover:text-ink">Tableau de bord</Link>
     </ActionCard>
   )
-}
-
-/** Génère une image de facture factice (démo, si aucun appareil photo n'est disponible). */
-function demoInvoiceImage(pharmacyName: string, lines: DraftLine[]) {
-  const c = document.createElement('canvas')
-  c.width = 480
-  c.height = 300 + lines.length * 34
-  const g = c.getContext('2d')!
-  g.fillStyle = '#fdfcf7'
-  g.fillRect(0, 0, c.width, c.height)
-  g.fillStyle = '#0f1f1a'
-  g.font = 'bold 22px sans-serif'
-  g.fillText(pharmacyName.toUpperCase().slice(0, 32), 24, 44)
-  g.font = '14px sans-serif'
-  g.fillStyle = '#555'
-  g.fillText(`FACTURE — ${new Date().toLocaleString('fr-FR')}`, 24, 72)
-  g.fillRect(24, 88, c.width - 48, 1)
-  let y = 120
-  let total = 0
-  g.font = '15px sans-serif'
-  for (const l of lines) {
-    if (!l.obtained) continue
-    total += l.amount
-    g.fillStyle = '#0f1f1a'
-    g.fillText(`${l.label.split(' — ')[0]!.slice(0, 34)} x${l.quantity}`, 24, y)
-    g.fillText(`${l.amount} F`, c.width - 110, y)
-    y += 34
-  }
-  g.fillRect(24, y, c.width - 48, 1)
-  g.font = 'bold 18px sans-serif'
-  g.fillText('TOTAL', 24, y + 34)
-  g.fillText(`${total} FCFA`, c.width - 160, y + 34)
-  g.font = 'italic 12px sans-serif'
-  g.fillStyle = '#999'
-  g.fillText('Image de démonstration — PHARMA CI', 24, c.height - 20)
-  return c.toDataURL('image/jpeg', 0.8)
 }

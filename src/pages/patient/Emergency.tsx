@@ -1,9 +1,10 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { MapPin, Navigation, Phone, Siren } from 'lucide-react'
 import { EMERGENCY_NUMBERS, HEALTH_KIND, HEALTH_PLACES } from '../../data/health'
 import { useStore } from '../../store/useStore'
 import { usePharmacies } from '../../lib/usePharmacies'
-import { directionsUrl, distanceKm, formatDistance } from '../../lib/geo'
+import { distanceKm, formatDistance, pharmacyDirectionsUrl } from '../../lib/geo'
 import PharmacyCard from '../../components/PharmacyCard'
 import { EmptyState, Notice, PageHeader, Section } from '../../components/ui'
 
@@ -20,12 +21,13 @@ const WARNING_SIGNS = [
 
 export default function Emergency() {
   const position = useStore((s) => s.user.position)
-  const garde = usePharmacies().filter((p) => p.onGarde).slice(0, 3)
-  const urgences = HEALTH_PLACES
-    .filter((p) => p.open24h && (p.kind === 'urgence' || p.kind === 'clinique' || p.kind === 'centre_sante'))
+  const pharmacies = usePharmacies()
+  const garde = useMemo(() => pharmacies.filter((p) => p.onGarde).slice(0, 3), [pharmacies])
+  const urgences = useMemo(() => HEALTH_PLACES
+    .filter((p) => p.kind === 'urgence' || p.kind === 'clinique' || p.kind === 'centre_sante')
     .map((p) => ({ ...p, km: distanceKm(position, p.position) }))
     .sort((a, b) => a.km - b.km)
-    .slice(0, 3)
+    .slice(0, 5), [position])
   const [main, ...others] = EMERGENCY_NUMBERS
 
   return (
@@ -81,24 +83,34 @@ export default function Emergency() {
         )}
       </Section>
 
-      <Section title="Urgences et centres ouverts 24h/24" action={<Link to="/sante" className="text-sm font-semibold text-brand-600">Tous les services</Link>}>
-        <div className="space-y-2">
-          {urgences.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-50 text-xl">{HEALTH_KIND[p.kind].emoji}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold">{p.name}</p>
-                <p className="text-xs text-slate-500">{p.commune} · {formatDistance(p.km)}</p>
-              </div>
-              <a href={`tel:${p.phone.replace(/\s/g, '')}`} aria-label="Appeler" className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-700"><Phone size={16} /></a>
-              <a href={directionsUrl(p.position)} target="_blank" rel="noreferrer" aria-label="Itinéraire" className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-700"><Navigation size={16} /></a>
-            </div>
-          ))}
-        </div>
+      <Section title="Urgences, cliniques et centres de santé les plus proches" action={<Link to="/sante" className="text-sm font-semibold text-brand-600">Tous les services</Link>}>
+        {urgences.length === 0 ? (
+          <EmptyState icon={<MapPin />} title="Annuaire bientôt disponible" text="L'annuaire des établissements sera disponible après la prochaine synchronisation." />
+        ) : (
+          <div className="space-y-2">
+            {urgences.map((p) => {
+              const tel = p.phone.replace(/[^\d+]/g, '')
+              return (
+                <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-50 text-xl">{HEALTH_KIND[p.kind].emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold">{p.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {p.category ?? HEALTH_KIND[p.kind].label} · {p.commune} · {formatDistance(p.km)}{p.positionApprox ? ' (position approximative)' : ''}
+                    </p>
+                  </div>
+                  {tel && <a href={`tel:${tel}`} aria-label="Appeler" className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-700"><Phone size={16} /></a>}
+                  <a href={pharmacyDirectionsUrl(p)} target="_blank" rel="noreferrer" aria-label="Itinéraire" className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-700"><Navigation size={16} /></a>
+                </div>
+              )
+            })}
+            <p className="text-xs text-slate-500">Horaires et service d'urgence non garantis : appelez l'établissement avant de vous déplacer.</p>
+          </div>
+        )}
       </Section>
 
       <Notice tone="red" icon={<Siren size={16} />}>
-        PHARMA CI n'est pas un service d'urgence. Les lieux listés sont des exemples de démonstration. En cas de danger, appelez le <a href="tel:185" className="font-bold underline">185</a> sans attendre.
+        PHARMA CI n'est pas un service d'urgence. Les établissements listés proviennent de l'annuaire public pharmacies-de-garde.ci. En cas de danger, appelez le <a href="tel:185" className="font-bold underline">185</a> sans attendre.
       </Notice>
     </div>
   )

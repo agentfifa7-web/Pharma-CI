@@ -13,6 +13,8 @@ import { downloadText } from '../../data/statusUi'
 export default function Profile() {
   const user = useStore((s) => s.user)
   const setUser = useStore((s) => s.setUser)
+  const profiles = useStore((s) => s.profiles)
+  const updateProfile = useStore((s) => s.updateProfile)
   const locationGranted = useStore((s) => s.locationGranted)
   const insurance = useStore((s) => s.insurance)
   const seniorMode = useStore((s) => s.seniorMode)
@@ -24,9 +26,11 @@ export default function Profile() {
   const resetDemo = useStore((s) => s.resetDemo)
   const { locate, loading } = useLocate()
 
-  const [form, setForm] = useState({ name: user.name, phone: user.phone, address: user.address, commune: user.commune })
+  const [form, setForm] = useState(() => toForm(user))
   const [saved, setSaved] = useState(false)
-  const dirty = form.name !== user.name || form.phone !== user.phone || form.address !== user.address || form.commune !== user.commune
+  const initial = toForm(user)
+  const dirty = form.name !== initial.name || form.phone !== initial.phone || form.address !== initial.address || form.commune !== initial.commune
+  const incomplete = !initial.name || !user.phone.trim() || !user.address.trim()
 
   const insurer = INSURANCES.find((i) => i.id === insurance?.insurerId)
   const unread = notifications.filter((n) => !n.read).length
@@ -37,7 +41,11 @@ export default function Profile() {
   }, [audit, prescriptions, missions])
 
   const save = () => {
-    setUser({ name: form.name.trim(), phone: form.phone.trim(), address: form.address.trim(), commune: form.commune.trim() })
+    const name = form.name.trim() || 'Moi'
+    // Le profil « Moi » du dossier familial suit le nom du compte tant qu'il n'a pas été personnalisé.
+    const self = profiles.find((p) => p.relation === 'moi')
+    if (self && (self.name === 'Moi' || self.name === user.name)) updateProfile(self.id, { name })
+    setUser({ name, phone: form.phone.trim(), address: form.address.trim(), commune: form.commune.trim() })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -59,7 +67,7 @@ export default function Profile() {
     if (!window.confirm('Supprimer toutes vos données de cet appareil ? Cette action est irréversible (démo : l\'application revient à son état initial).')) return
     resetDemo()
     const u = useStore.getState().user
-    setForm({ name: u.name, phone: u.phone, address: u.address, commune: u.commune })
+    setForm(toForm(u))
   }
 
   return (
@@ -68,13 +76,18 @@ export default function Profile() {
 
       <Section title="Mes informations">
         <Card>
+          {incomplete && (
+            <Notice tone="orange" className="mb-4">
+              <b>Complétez votre profil</b> : votre nom, votre téléphone et votre adresse de livraison sont nécessaires pour qu'un agent puisse vous livrer.
+            </Notice>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input label="Nom complet" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <Input label="Téléphone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input label="Adresse de livraison" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="sm:col-span-2" />
-            <Input label="Commune" value={form.commune} onChange={(e) => setForm({ ...form, commune: e.target.value })} />
+            <Input label="Nom complet" value={form.name} placeholder="Prénom et nom" onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <Input label="Téléphone" type="tel" inputMode="tel" value={form.phone} placeholder="Votre numéro" onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Input label="Adresse de livraison" value={form.address} placeholder="Quartier, rue, repère…" onChange={(e) => setForm({ ...form, address: e.target.value })} className="sm:col-span-2" />
+            <Input label="Commune" value={form.commune} placeholder="Votre commune" onChange={(e) => setForm({ ...form, commune: e.target.value })} />
           </div>
-          <Button className="mt-4 w-full sm:w-auto" onClick={save} disabled={!dirty || !form.name.trim()}>
+          <Button className="mt-4 w-full sm:w-auto" onClick={save} disabled={!dirty}>
             <Save size={16} /> {saved ? 'Enregistré ✓' : 'Enregistrer'}
           </Button>
         </Card>
@@ -142,12 +155,17 @@ export default function Profile() {
 
       <Section title="Accès démo">
         <div className="grid gap-2 sm:grid-cols-2">
-          <LinkRow to="/agent" icon={<Bike size={18} />} title="App PHARMA CI AGENT" sub="Exécuter les missions" />
+          <LinkRow to="/agent" icon={<Bike size={18} />} title="App PHARMA CI AGENT" sub="Comptes agents de test" />
           <LinkRow to="/admin" icon={<LayoutDashboard size={18} />} title="Console Admin" sub="Supervision, anti-fraude" />
         </div>
       </Section>
     </div>
   )
+}
+
+/** Le nom par défaut « Moi » n'est pas un vrai nom : champ laissé vide pour inviter à le saisir. */
+function toForm(u: { name: string; phone: string; address: string; commune: string }) {
+  return { name: u.name === 'Moi' ? '' : u.name, phone: u.phone ?? '', address: u.address ?? '', commune: u.commune ?? '' }
 }
 
 function LinkRow({ to, icon, title, sub }: { to: string; icon: React.ReactNode; title: string; sub: string }) {

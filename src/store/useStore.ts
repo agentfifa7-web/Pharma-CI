@@ -113,10 +113,9 @@ type State = {
 }
 
 const initial = () => ({
-  user: { name: 'Awa Koné', phone: '+225 07 00 00 00 00', address: 'Riviera 2, Cocody, Abidjan', position: { lat: 5.3610, lng: -3.9760 }, commune: 'Cocody' },
+  user: { name: 'Moi', phone: '', address: '', position: { lat: 5.3364, lng: -4.0267 }, commune: '' },
   profiles: [
-    { id: 'pf-moi', name: 'Awa Koné', relation: 'moi', consent: true } as FamilyProfile,
-    { id: 'pf-enfant', name: 'Ismaël Koné', relation: 'enfant', birthYear: 2019, consent: true } as FamilyProfile,
+    { id: 'pf-moi', name: 'Moi', relation: 'moi', consent: true } as FamilyProfile,
   ],
   activeProfileId: 'pf-moi',
   seniorMode: false,
@@ -375,7 +374,7 @@ export const useStore = create<State>()(
         resetDemo: () => set(initial()),
       }
     },
-    { name: 'pharma-ci', version: 1 },
+    { name: 'pharma-ci', version: 2, migrate: () => initial() as unknown as State },
   ),
 )
 
