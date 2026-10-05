@@ -51,3 +51,31 @@ test('fiche établissement', () => {
   assert.equal(d.hours[0], null)
   assert.deepEqual(d.locations, ['Yamoussoukro'])
 })
+
+import { medKey, parseCmuList, parseDirectoryPage, parsePriceList } from './parse.mjs'
+
+test('liste des prix des médicaments', () => {
+  const { items, modified } = parsePriceList(fx('prix.html'))
+  assert.equal(items.length, 3870) // 3 lignes vides dans la source (N° 91 à 93)
+  assert.deepEqual(items[0], { code: '8108772', name: '5 FLUORO URACILE INJ FLACON DETAIL', group: 'CANCEROLOGIE, ANTINEOPLASIQUE', price: 13780 })
+  assert.equal(items.at(-1).price, 6505)
+  assert.ok(items.filter((i) => i.price).length > 3800)
+  assert.equal(modified, '2024-12-18T09:30:11+00:00')
+})
+
+test('liste CMU', () => {
+  const { items } = parseCmuList(fx('cmu.html'))
+  assert.ok(items.length >= 737)
+  assert.deepEqual(items[0], { name: 'ABZ SUSP BUV FL/10 ML', price: 705, dci: 'ALBENDAZOLE', therapeuticClass: 'PARASITOLOGIE, ANTHELMINTIQUE', form: 'Solution buvable' })
+  assert.equal(medKey('ABZ SUSP BUV FL/10 ML'), medKey('ABZ SUSP BUVFL/10ML'))
+})
+
+test("page d'annuaire", () => {
+  const { total, lastPage, items } = parseDirectoryPage(fx('annuaire-page1.html'))
+  assert.equal(total, 2209)
+  assert.equal(lastPage, 56)
+  assert.equal(items.length, 40)
+  assert.equal(items[0].name, 'CLINIQUE MEDICALE LES OLIVIERS')
+  assert.equal(items[0].city, 'Abidjan')
+  assert.equal(items[1].phone, '21564221')
+})

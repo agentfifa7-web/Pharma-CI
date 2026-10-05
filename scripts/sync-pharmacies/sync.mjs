@@ -1,37 +1,44 @@
 #!/usr/bin/env node
 /**
- * Synchronisation hebdomadaire des pharmacies depuis https://www.pharmacies-de-garde.ci
+ * Synchronisation des données publiques de https://www.pharmacies-de-garde.ci
  *
- *   node scripts/sync-pharmacies/sync.mjs               # réseau : garde + annuaire complet
- *   node scripts/sync-pharmacies/sync.mjs --garde-only  # réseau : uniquement la liste de garde
+ *   node scripts/sync-pharmacies/sync.mjs               # réseau : tout (garde, médicaments, annuaire, actualités)
+ *   node scripts/sync-pharmacies/sync.mjs --garde-only  # réseau : garde + médicaments (rapide)
  *   node scripts/sync-pharmacies/sync.mjs --fixtures    # hors ligne : pages enregistrées dans fixtures/
  *
- * Sorties :
- *   public/data/pharmacies.json   — liste au format `Pharmacy` de l'application
- *   scripts/sync-pharmacies/cache/listings.json — cache des fiches (évite de tout re-télécharger)
+ * Sorties (public/data/) :
+ *   pharmacies.json     — pharmacies (garde + annuaire) au format `Pharmacy`
+ *   medicaments.json    — base PHARMA MED (prix publiés + liste CMU) au format `Medication`
+ *   etablissements.json — cliniques, laboratoires, centres de santé… au format `HealthPlace`
+ *   actualites.json     — articles santé publiés par la source (titre, extrait, lien)
+ * Cache : scripts/sync-pharmacies/cache/listings.json (fiches déjà téléchargées).
  *
- * Bonnes pratiques : une seule exécution par semaine, requêtes espacées, User-Agent identifié.
- * Vérifier les conditions d'utilisation du site et privilégier un accord avec l'éditeur.
+ * Bonnes pratiques : requêtes espacées, User-Agent identifié, cache. Vérifier les conditions
+ * d'utilisation du site et privilégier un accord avec l'éditeur.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { matchKey, parseGardePage, parseListingPage } from './parse.mjs'
+import { matchKey, parseCmuList, parseDirectoryPage, parseGardePage, parseListingPage, parsePriceList } from './parse.mjs'
+import { buildMedications, CMU_URL, PRICE_URL } from './medications.mjs'
 import { centerOf, CITIES, ABIDJAN_COMMUNES, strip, titleCase } from './communes.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
-const OUT = join(ROOT, 'public', 'data', 'pharmacies.json')
+const DATA = join(ROOT, 'public', 'data')
 const CACHE = join(HERE, 'cache', 'listings.json')
+const FIX = (f) => readFile(join(HERE, 'fixtures', f), 'utf8')
 const BASE = 'https://www.pharmacies-de-garde.ci'
 const GARDE_URL = `${BASE}/liste-des-pharmacies-de-garde-en-cote-divoire/`
+const DIRECTORY_URL = `${BASE}/toutes-les-pharmacies-en-cote-divoire/`
 const UA = 'PHARMA-CI-sync/1.0 (+https://github.com/agentfifa7-web/pharma-ci)'
 const DELAY_MS = Number(process.env.SYNC_DELAY_MS ?? 600)
 
 const args = new Set(process.argv.slice(2))
 const OFFLINE = args.has('--fixtures')
-const GARDE_ONLY = args.has('--garde-only') || OFFLINE
+const QUICK = args.has('--garde-only')
+const NOW = new Date().toISOString()
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const log = (...a) => console.log('[sync]', ...a)
@@ -49,12 +56,19 @@ async function get(url, { json = false } = {}) {
   }
 }
 
-/* ---------- Annuaire (API WordPress du type « listing ») ---------- */
+const decode = (s = '') =>
+  s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&rsquo;/g, '’').replace(/&laquo;/g, '«').replace(/&raquo;/g, '»').replace(/&nbsp;/g, ' ')
+    .replace(/&hellip;/g, '…').replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
 
-const isPharmacy = (terms) => terms.some((t) => t.taxonomy?.includes('category') && /pharmac/i.test(t.slug + t.name))
+/* ---------- Annuaire : API WordPress, sinon pages HTML ---------- */
 
-async function fetchDirectory(cache) {
-  const listings = []
+async function directoryFromApi() {
+  const out = []
   let page = 1
   let totalPages = 1
   do {
@@ -62,102 +76,114 @@ async function fetchDirectory(cache) {
     totalPages = Number(headers.get('x-wp-totalpages') ?? 1)
     for (const item of body) {
       const terms = (item._embedded?.['wp:term'] ?? []).flat()
-      if (!isPharmacy(terms)) continue
-      listings.push({
-        id: item.id,
-        slug: item.slug,
+      out.push({
+        id: String(item.id),
         link: item.link,
         modified: item.modified_gmt ?? item.modified,
-        title: decode(item.title?.rendered ?? ''),
+        title: decode(item.title?.rendered),
+        category: terms.filter((t) => t.taxonomy?.includes('category')).map((t) => decode(t.name)).join(', '),
         locations: terms.filter((t) => t.taxonomy?.includes('location')).map((t) => decode(t.name)),
       })
     }
-    log(`annuaire : page ${page}/${totalPages} (${listings.length} pharmacies)`)
+    log(`annuaire (API) : page ${page}/${totalPages} — ${out.length} fiches`)
     page++
     await sleep(DELAY_MS)
   } while (page <= totalPages)
+  return out
+}
 
-  // Détail de chaque fiche (GPS, adresse, horaires) — uniquement si nouvelle ou modifiée.
+async function directoryFromHtml() {
+  const out = []
+  let page = 1
+  let last = 1
+  do {
+    const { body } = await get(page === 1 ? DIRECTORY_URL : `${DIRECTORY_URL}page/${page}/`)
+    const { lastPage, items } = parseDirectoryPage(body)
+    last = Math.max(last, lastPage)
+    for (const i of items) out.push({ id: i.slug, link: i.link, title: i.name, category: i.category, phone: i.phone, locations: i.city ? [i.city] : [] })
+    log(`annuaire (pages) : ${page}/${last} — ${out.length} fiches`)
+    page++
+    await sleep(DELAY_MS)
+  } while (page <= last)
+  return out
+}
+
+/** Détails (GPS, adresse, horaires) — uniquement pour les fiches nouvelles ou modifiées. */
+async function withDetails(listings, cache) {
   let fetched = 0
   for (const l of listings) {
     const c = cache[l.id]
-    if (c && c.modified === l.modified) {
-      Object.assign(l, c.detail ? { detail: c.detail } : {})
+    if (c && (c.modified === l.modified || (!l.modified && c.detail))) {
+      l.detail = c.detail
       continue
     }
     try {
-      const { body } = await get(l.link)
-      l.detail = parseListingPage(body)
+      l.detail = parseListingPage((await get(l.link)).body)
       fetched++
-      if (fetched % 25 === 0) log(`fiches détaillées : ${fetched}`)
+      if (fetched % 50 === 0) log(`fiches détaillées : ${fetched}`)
     } catch (e) {
       log('fiche ignorée', l.link, e.message)
     }
     cache[l.id] = { modified: l.modified, detail: l.detail }
     await sleep(DELAY_MS)
   }
-  log(`fiches détaillées téléchargées : ${fetched} (cache : ${listings.length - fetched})`)
+  log(`fiches détaillées téléchargées : ${fetched} (déjà en cache : ${listings.length - fetched})`)
   return listings
 }
 
-const decode = (s) =>
-  s.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&rsquo;|&#8217;/g, '’').replace(/&amp;/g, '&').replace(/&#038;/g, '&').replace(/<[^>]+>/g, '').trim()
+const isPharmacy = (l) => /pharmac/i.test(l.category) || (!l.category && /^pharmacie\b/i.test(l.title))
 
-/** Déduit ville/commune à partir des localisations de la fiche. */
-function placeOf(locations, fallbackText = '') {
-  const all = [...locations, fallbackText].map(strip)
+/** Ville/commune à partir des localisations de la fiche. */
+function placeOf(locations, extra = '') {
+  const all = [...locations, extra].filter(Boolean).map(strip)
   const commune = Object.keys(ABIDJAN_COMMUNES).find((c) => all.some((l) => l.includes(strip(c))))
-  if (commune && (all.some((l) => l.includes('ABIDJAN')) || commune !== 'Songon')) return { city: 'Abidjan', commune }
+  if (commune) return { city: 'Abidjan', commune }
   const city = Object.keys(CITIES).find((c) => all.some((l) => l.includes(strip(c))))
   if (city) return { city, commune: city }
   if (all.some((l) => l.includes('ABIDJAN'))) return { city: 'Abidjan', commune: 'Abidjan' }
-  return { city: locations[0] ? titleCase(locations[0]) : 'Côte d’Ivoire', commune: locations[0] ? titleCase(locations[0]) : '—' }
+  const first = locations[0] ? titleCase(locations[0]) : 'Côte d’Ivoire'
+  return { city: first, commune: first }
 }
 
 const REGION = (city) => (city === 'Abidjan' ? "District autonome d'Abidjan" : city === 'Yamoussoukro' ? 'District autonome de Yamoussoukro' : city)
-
-/* ---------- Fusion garde + annuaire → format Pharmacy ---------- */
-
-function toPharmacy({ id, name, note, phone, city, commune, quartier, position, approx, hours, address, link, garde, period }) {
-  return {
-    id,
-    name,
-    address: address ?? [quartier, commune !== city ? commune : undefined, city].filter(Boolean).join(', '),
-    commune,
-    city,
-    region: REGION(city),
-    position,
-    positionApprox: approx || undefined,
-    phone: phone || '',
-    hours: hours ?? [null, ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '13:00']],
-    hoursApprox: hours ? undefined : true,
-    services: note ? [note] : [],
-    gardeGroup: -1,
-    garde: garde && period ? { start: period.start, end: period.end } : undefined,
-    cmuVerified: false,
-    insurances: [],
-    deliveryAvailable: city === 'Abidjan',
-    claimed: false,
-    source: 'pharmacies-de-garde.ci',
-    sourceUrl: link ?? GARDE_URL,
-  }
+const phoneOf = (s = '') => {
+  const d = s.replace(/\D/g, '')
+  if (d.length === 10) return `+225 ${d.replace(/(\d{2})(?=\d)/g, '$1 ').trim()}`
+  // Ancien format à 8 chiffres (avant 2021) : conservé tel que publié, sans extrapoler le nouveau numéro.
+  return d.length >= 8 ? d.replace(/(\d{2})(?=\d)/g, '$1 ').trim() : ''
 }
 
-/** Petit décalage déterministe pour ne pas superposer les points approximatifs sur la carte. */
+/** Petit décalage déterministe pour ne pas superposer les points approximatifs. */
 function jitter(center, seed) {
   let h = 0
   for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0
   const a = ((h % 360) * Math.PI) / 180
-  const r = 0.004 + ((h >> 9) % 100) / 100 * 0.01
+  const r = 0.004 + (((h >> 9) % 100) / 100) * 0.01
   return { lat: +(center.lat + Math.cos(a) * r).toFixed(5), lng: +(center.lng + Math.sin(a) * r).toFixed(5) }
 }
 
-function merge(garde, directory) {
+const DEFAULT_HOURS = [null, ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '13:00']]
+
+function toPharmacy({ id, name, note, phone, city, commune, quartier, position, approx, hours, address, link, period }) {
+  return {
+    id, name,
+    address: address ?? [quartier, commune !== city ? commune : undefined, city].filter(Boolean).join(', '),
+    commune, city, region: REGION(city), position, positionApprox: approx || undefined,
+    phone: phone || '',
+    hours: hours ?? DEFAULT_HOURS, hoursApprox: hours ? undefined : true,
+    services: note ? [note] : [],
+    gardeGroup: -1,
+    garde: period ? { start: period.start, end: period.end } : undefined,
+    cmuVerified: false, insurances: [], deliveryAvailable: city === 'Abidjan', claimed: false,
+    source: 'pharmacies-de-garde.ci', sourceUrl: link ?? GARDE_URL,
+  }
+}
+
+function buildPharmacies(garde, directory) {
   const byKey = new Map()
-  for (const l of directory) {
+  for (const l of directory.filter(isPharmacy)) {
     const place = placeOf(l.locations, l.detail?.address)
-    const key = `${matchKey(l.title)}|${strip(place.city)}`
-    byKey.set(key, { ...l, place })
+    byKey.set(`${matchKey(l.title)}|${strip(place.city)}`, { ...l, place })
   }
   const out = []
   const used = new Set()
@@ -166,15 +192,13 @@ function merge(garde, directory) {
     const d = byKey.get(key)
     if (d) used.add(key)
     const center = centerOf(g.city, g.commune) ?? { lat: 5.3364, lng: -4.0267 }
-    const position = d?.detail?.position ?? jitter(center, g.name + g.zone)
-    out.push(
-      toPharmacy({
-        id: d ? `pg-${d.id}` : `pg-g-${matchKey(g.name).toLowerCase()}-${strip(g.city).toLowerCase().replace(/ /g, '')}`,
-        name: g.name, note: g.note, phone: g.phone, city: g.city, commune: g.commune, quartier: g.quartier,
-        position, approx: !d?.detail?.position, hours: d?.detail?.hours, address: d?.detail?.address && `${d.detail.address}${g.quartier ? ` (${g.quartier})` : ''}`,
-        link: d?.link, garde: true, period: garde.period,
-      }),
-    )
+    out.push(toPharmacy({
+      id: d ? `pg-${d.id}` : `pg-g-${matchKey(g.name).toLowerCase()}-${strip(g.city).toLowerCase().replace(/ /g, '')}`,
+      name: g.name, note: g.note, phone: g.phone || phoneOf(d?.phone), city: g.city, commune: g.commune, quartier: g.quartier,
+      position: d?.detail?.position ?? jitter(center, g.name + g.zone), approx: !d?.detail?.position,
+      hours: d?.detail?.hours, address: d?.detail?.address && `${d.detail.address}${g.quartier ? ` (${g.quartier})` : ''}`,
+      link: d?.link, period: garde.period,
+    }))
   }
   for (const [key, d] of byKey) {
     if (used.has(key)) continue
@@ -182,58 +206,169 @@ function merge(garde, directory) {
     const position = d.detail?.position ?? (center && jitter(center, d.title))
     if (!position) continue
     out.push(toPharmacy({
-      id: `pg-${d.id}`, name: titleCase(d.title).replace(/^Pharmacie\b/, 'Pharmacie'), city: d.place.city, commune: d.place.commune,
+      id: `pg-${d.id}`, name: titleCase(d.title), phone: phoneOf(d.phone), city: d.place.city, commune: d.place.commune,
       position, approx: !d.detail?.position, hours: d.detail?.hours, address: d.detail?.address, link: d.link,
     }))
   }
-  // Identifiants uniques (deux homonymes dans la même ville)
+  return dedupeIds(out)
+}
+
+function dedupeIds(list) {
   const seen = new Map()
-  for (const p of out) {
+  for (const p of list) {
     const n = seen.get(p.id) ?? 0
     seen.set(p.id, n + 1)
     if (n) p.id = `${p.id}-${n + 1}`
   }
-  return out
+  return list
+}
+
+/** Établissements de santé (hors pharmacies) → format HealthPlace de l'application. */
+function kindOf(category) {
+  const c = strip(category)
+  if (/LABORATOIRE|ANALYSE/.test(c)) return 'laboratoire'
+  if (/URGENCE/.test(c)) return 'urgence'
+  if (/CLINIQUE|HOPITAL|POLYCLINIQUE/.test(c)) return 'clinique'
+  if (/CENTRE|DISPENSAIRE|MAISON DE SANTE|SERVICE HOSPITALIER|GROUPE MEDICAL|CABINET/.test(c)) return 'centre_sante'
+  if (/MEDECIN|LOGUE|PEDIATRE|GYNECO|CHIRURGIEN|PSYCHIATRE|DENTISTE|SAGE FEMME|KINE|OSTEO|ORTHO|STOMATO|NUTRITION/.test(c)) return 'medecin'
+  return 'autre'
+}
+
+function buildEstablishments(directory) {
+  const out = []
+  for (const l of directory.filter((x) => !isPharmacy(x))) {
+    const place = placeOf(l.locations, l.detail?.address)
+    const center = centerOf(place.city, place.commune)
+    const position = l.detail?.position ?? (center && jitter(center, l.title))
+    if (!position) continue
+    out.push({
+      id: `hp-${l.id}`,
+      kind: kindOf(l.category),
+      category: l.category || undefined,
+      name: titleCase(l.title),
+      commune: place.commune,
+      city: place.city,
+      address: l.detail?.address,
+      position,
+      positionApprox: !l.detail?.position || undefined,
+      phone: phoneOf(l.phone),
+      services: l.category ? [l.category] : [],
+      open24h: false,
+      hours: l.detail?.hours,
+      sourceUrl: l.link,
+    })
+  }
+  return dedupeIds(out)
+}
+
+/* ---------- Actualités santé (articles WordPress) ---------- */
+
+const HEALTH = /pharmac|sant[ée]|m[ée]dic|garde|maladie|vaccin|paludisme|h[ôo]pital|clinique|soin|cmu|assurance|docteur|pharmacien|traitement|pr[ée]vention|ordre/i
+
+async function fetchNews() {
+  const { body } = await get(`${BASE}/wp-json/wp/v2/posts?per_page=50&_embed=wp:term,wp:featuredmedia`, { json: true })
+  return body
+    .map((p) => {
+      const title = decode(p.title?.rendered)
+      const excerpt = decode(p.excerpt?.rendered).replace(/\s*\[…\]$|\s*Lire la suite.*$/i, '')
+      const cats = (p._embedded?.['wp:term'] ?? []).flat().filter((t) => t.taxonomy === 'category').map((t) => decode(t.name))
+      return {
+        id: `news-${p.id}`, title, excerpt, date: p.date_gmt ?? p.date, url: p.link, category: cats[0] ?? 'Santé',
+        image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url,
+      }
+    })
+    .filter((n) => HEALTH.test(`${n.title} ${n.excerpt}`))
 }
 
 /* ---------- Programme principal ---------- */
 
+const writeJson = async (name, data) => {
+  await mkdir(DATA, { recursive: true })
+  await writeFile(join(DATA, name), JSON.stringify(data) + '\n')
+  log(`écrit public/data/${name}`)
+}
+const readJson = async (name) => (existsSync(join(DATA, name)) ? JSON.parse(await readFile(join(DATA, name), 'utf8')) : undefined)
+
+async function step(label, fn) {
+  try {
+    return await fn()
+  } catch (e) {
+    log(`⚠️  ${label} : ${e.message} — données précédentes conservées`)
+    return undefined
+  }
+}
+
 async function main() {
   log(OFFLINE ? 'mode hors ligne (fixtures)' : `source : ${BASE}`)
-  const gardeHtml = OFFLINE ? await readFile(join(HERE, 'fixtures', 'garde.html'), 'utf8') : (await get(GARDE_URL)).body
-  const garde = parseGardePage(gardeHtml)
+  const cache = existsSync(CACHE) ? JSON.parse(await readFile(CACHE, 'utf8')) : {}
+
+  // 1. Pharmacies de garde (obligatoire)
+  const garde = parseGardePage(OFFLINE ? await FIX('garde.html') : (await get(GARDE_URL)).body)
   if (!garde.period || garde.entries.length < 20) throw new Error(`Liste de garde inexploitable (période: ${!!garde.period}, lignes: ${garde.entries.length}) — structure du site modifiée ?`)
   log(`garde : ${garde.entries.length} pharmacies — ${garde.period.label}`)
 
-  const cache = existsSync(CACHE) ? JSON.parse(await readFile(CACHE, 'utf8')) : {}
+  // 2. Médicaments : prix publiés + liste CMU
+  await step('médicaments', async () => {
+    const prices = parsePriceList(OFFLINE ? await FIX('prix.html') : (await get(PRICE_URL)).body)
+    const cmu = parseCmuList(OFFLINE ? await FIX('cmu.html') : (await get(CMU_URL)).body)
+    if (prices.items.length < 500 || cmu.items.length < 100) throw new Error(`listes incomplètes (${prices.items.length} prix, ${cmu.items.length} CMU)`)
+    const medications = buildMedications(prices, cmu)
+    const counts = { total: medications.length, prix: prices.items.length, cmu: cmu.items.length, fusionnes: medications.filter((m) => m.k && m.s === 'p').length }
+    log('médicaments :', counts)
+    await writeJson('medicaments.json', {
+      source: BASE, generatedAt: NOW, counts,
+      sources: { prix: { url: PRICE_URL, modified: prices.modified }, cmu: { url: CMU_URL, modified: cmu.modified } },
+      medications,
+    })
+  })
+
+  // 3. Annuaire complet (pharmacies + autres établissements)
   let directory = []
-  if (!GARDE_ONLY) {
-    try {
-      directory = await fetchDirectory(cache)
-    } catch (e) {
-      log('annuaire indisponible, seule la liste de garde est publiée :', e.message)
-    }
-  } else if (OFFLINE) {
-    const detail = parseListingPage(await readFile(join(HERE, 'fixtures', 'listing-eben-ezer.html'), 'utf8'))
-    directory = [{ id: 9348, slug: 'pharmacie-eben-ezer', link: `${BASE}/listing/pharmacie-eben-ezer/`, title: detail.name, locations: detail.locations, detail }]
+  if (OFFLINE) {
+    const page1 = parseDirectoryPage(await FIX('annuaire-page1.html'))
+    const eben = parseListingPage(await FIX('listing-eben-ezer.html'))
+    directory = [
+      ...page1.items.map((i) => ({ id: i.slug, link: i.link, title: i.name, category: i.category, phone: i.phone, locations: [i.city] })),
+      { id: '9348', link: `${BASE}/listing/pharmacie-eben-ezer/`, title: eben.name, category: 'Pharmacies', locations: eben.locations, detail: eben },
+    ]
+  } else if (!QUICK) {
+    directory =
+      (await step('annuaire via API', directoryFromApi)) ??
+      (await step('annuaire via pages HTML', directoryFromHtml)) ??
+      []
+    if (directory.length) await withDetails(directory, cache)
   }
 
-  const pharmacies = merge(garde, directory)
-  const payload = {
-    source: BASE,
-    sourceLabel: 'pharmacies-de-garde.ci',
-    generatedAt: new Date().toISOString(),
-    garde: garde.period,
-    counts: { total: pharmacies.length, garde: garde.entries.length, directory: directory.length, approxPositions: pharmacies.filter((p) => p.positionApprox).length },
-    pharmacies,
+  const previous = await readJson('pharmacies.json')
+  const pharmacies = buildPharmacies(garde, directory)
+  // Sans annuaire frais, on conserve les fiches non-garde déjà connues (mise à jour de la garde uniquement).
+  if (!directory.length && previous?.pharmacies) {
+    const ids = new Set(pharmacies.map((p) => p.id))
+    for (const p of previous.pharmacies) if (!ids.has(p.id) && !p.id.startsWith('pg-g-')) pharmacies.push({ ...p, garde: undefined })
   }
-  await mkdir(dirname(OUT), { recursive: true })
-  await writeFile(OUT, JSON.stringify(payload, null, 1) + '\n')
+  await writeJson('pharmacies.json', {
+    source: BASE, sourceLabel: 'pharmacies-de-garde.ci', generatedAt: NOW, garde: garde.period,
+    counts: { total: pharmacies.length, garde: garde.entries.length, approxPositions: pharmacies.filter((p) => p.positionApprox).length },
+    pharmacies,
+  })
+
+  if (directory.length) {
+    const places = buildEstablishments(directory)
+    await writeJson('etablissements.json', { source: BASE, generatedAt: NOW, counts: { total: places.length }, places })
+  }
+
+  // 4. Actualités santé
+  if (!OFFLINE && !QUICK) {
+    await step('actualités', async () => {
+      const news = await fetchNews()
+      await writeJson('actualites.json', { source: BASE, generatedAt: NOW, articles: news })
+    })
+  }
+
   if (!OFFLINE) {
     await mkdir(dirname(CACHE), { recursive: true })
     await writeFile(CACHE, JSON.stringify(cache) + '\n')
   }
-  log(`écrit ${OUT} :`, payload.counts)
 }
 
 main().catch((e) => {

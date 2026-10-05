@@ -77,7 +77,7 @@ export function resolveZone(label, table) {
 }
 
 export function centerOf(city, commune) {
-  const c = (city === 'Abidjan' ? ABIDJAN_COMMUNES[commune] : CITIES[city]) ?? CITIES[city] ?? ABIDJAN_COMMUNES[commune]
+  const c = (city === 'Abidjan' ? ABIDJAN_COMMUNES[commune] ?? ABIDJAN_COMMUNES.Plateau : CITIES[city]) ?? CITIES[city] ?? ABIDJAN_COMMUNES[commune]
   return c ? { lat: c[0], lng: c[1] } : undefined
 }
 

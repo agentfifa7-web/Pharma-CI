@@ -74,45 +74,52 @@ L'application contient trois interfaces (sélecteur en haut à droite) :
 src/
   types.ts                 modèle de données
   store/useStore.ts        état applicatif (zustand, persistant, synchronisé entre onglets)
-  data/                    données de démonstration (pharmacies, médicaments, assureurs, contenus…)
+  data/                    modules de données (chargés depuis public/data, alimenté par la synchronisation)
   services/                accès aux sources externes (annuaire des pharmacies)
   lib/                     horaires & garde, géolocalisation, tarification, affectation, empreintes
   components/              layouts, kit UI, carte Leaflet
   pages/patient|agent|admin
 ```
 
-## ⚠️ Données de démonstration et passage en production
+## 📦 Origine des données — aucune donnée fictive
 
-Cette version est un **prototype fonctionnel côté client**. Avant toute mise en service :
+| Donnée | Source | Fichier |
+|---|---|---|
+| Pharmacies de garde (période, commune, quartier, téléphone) | pharmacies-de-garde.ci — liste de garde hebdomadaire | `public/data/pharmacies.json` |
+| Annuaire des pharmacies (GPS, adresse, horaires) | pharmacies-de-garde.ci — annuaire (API WordPress ou pages) | `public/data/pharmacies.json` |
+| Cliniques, laboratoires, centres de santé, médecins… | pharmacies-de-garde.ci — annuaire | `public/data/etablissements.json` |
+| Médicaments : code, nom commercial, groupe thérapeutique, prix | pharmacies-de-garde.ci — « Prix des médicaments en pharmacie » | `public/data/medicaments.json` |
+| Liste CMU : nom, prix, DCI, classe, présentation | pharmacies-de-garde.ci — « Médicaments pris en charge par la CMU » | `public/data/medicaments.json` |
+| Actualités santé | pharmacies-de-garde.ci — articles | `public/data/actualites.json` |
+| Numéros d'urgence | numéros nationaux (SAMU 185, pompiers 180, police 170/110/111) | `src/data/health.ts` |
 
-- **Pharmacies et tours de garde** : synchronisés depuis [pharmacies-de-garde.ci](https://www.pharmacies-de-garde.ci)
-  (voir ci-dessous). Sans fichier synchronisé, l'application revient au jeu de démonstration.
-- **Prix et CMU** : valeurs d'exemple. Le panier CMU doit être alimenté depuis les listes officielles du
-  ministère (sante.gouv.ci) et tenu à jour.
-- **Lecture d'ordonnance (IA)** : l'extraction est simulée (`src/data/extraction.ts`) ; à brancher sur un
-  service OCR/vision. L'IA ne modifie jamais la prescription.
-- **Paiement** : simulé (Orange Money, MTN MoMo, Moov Money, Wave, carte). Les flux financiers doivent être
-  conçus avec un professionnel de la réglementation ivoirienne.
-- **Sécurité des données de santé** : backend, chiffrement, authentification forte, contrôle des rôles,
-  journalisation, conservation — à concevoir avec un spécialiste conformité et selon les exigences de
-  l'Autorité de protection des données (autoritedeprotection.ci). Aujourd'hui, les données restent dans le
-  `localStorage` du navigateur.
+Ce qui n'a **pas** de source réelle reste **vide** (avec un message explicatif) plutôt que d'être inventé :
+alertes médicaments (à brancher sur l'AIRP), assureurs partenaires, base des numéros de lot, informations de notice
+(indications, effets indésirables…), populations par commune (calcul de couverture). Les agents fournis sont des
+**comptes de test** permettant d'essayer le parcours de mission.
+
+À prévoir avant une mise en service : paiement réel (simulé ici), backend sécurisé pour les données de santé
+(aujourd'hui dans le `localStorage`), conformité avec l'Autorité de protection des données (autoritedeprotection.ci).
 
 ## 🔄 Synchronisation avec pharmacies-de-garde.ci
 
-`scripts/sync-pharmacies/` récupère les données publiques du site et produit `public/data/pharmacies.json`,
-chargé par l'application au démarrage.
+`scripts/sync-pharmacies/` récupère les données publiques du site et produit les fichiers `public/data/*.json`,
+chargés par l'application au démarrage.
 
 | Source | Contenu extrait |
 |---|---|
 | `/liste-des-pharmacies-de-garde-en-cote-divoire/` (tableaux TablePress) | Période de garde, pharmacies de garde d'Abidjan et de l'intérieur, commune/quartier, téléphone |
 | API WordPress `/wp-json/wp/v2/listing` | Annuaire complet (fiches « Pharmacies »), localisations |
+| Pages `/toutes-les-pharmacies-en-cote-divoire/page/N/` | Annuaire (repli si l'API est fermée) : nom, catégorie, téléphone, ville |
 | Fiches `/listing/<slug>/` | Coordonnées GPS, adresse, horaires d'ouverture |
+| `/prix-des-medicaments-en-pharmacie-en-cote-divoire/` | 3 870 médicaments : code, nom, groupe thérapeutique, prix |
+| `/liste-des-medicaments-pris-en-charge-par-la-cmu/` | 737 médicaments CMU : nom, prix, DCI, classe, présentation |
+| API WordPress `/wp-json/wp/v2/posts` | Articles santé (titre, extrait, date, lien) |
 
 ```bash
 npm run sync:test                       # tests des parseurs (sur des pages enregistrées)
 npm run sync:pharmacies                 # synchronisation complète (accès réseau requis)
-npm run sync:pharmacies -- --garde-only # uniquement la liste de garde
+npm run sync:pharmacies -- --garde-only # garde + médicaments uniquement (rapide)
 npm run sync:pharmacies -- --fixtures   # hors ligne, à partir de scripts/sync-pharmacies/fixtures/
 ```
 

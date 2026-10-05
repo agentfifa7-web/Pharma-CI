@@ -109,3 +109,68 @@ export const matchKey = (name) =>
     .replace(/\bSTE\b/g, 'ST')
     .replace(/\b(DE|DU|DES|LA|LE|LES|D|L)\b/g, '')
     .replace(/\s+/g, '')
+
+/* ---------- Médicaments ---------- */
+
+const cellText = ($, el) => $(el).text().replace(/\s+/g, ' ').trim()
+const toInt = (s) => {
+  const n = Number(String(s).replace(/[^\d]/g, ''))
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
+/** Lignes d'un tableau TablePress sous forme d'objets indexés par l'en-tête normalisé. */
+function tableRows(html) {
+  const $ = cheerio.load(html)
+  const table = $('table.tablepress').first()
+  const heads = table.find('thead th, thead td').map((_, th) => strip($(th).text())).get()
+  const rows = []
+  table.find('tbody tr').each((_, tr) => {
+    const cells = $(tr).find('td').map((__, td) => cellText($, td)).get()
+    const row = {}
+    heads.forEach((h, i) => { if (h) row[h] = cells[i] ?? '' })
+    rows.push(row)
+  })
+  const modified = $('meta[property="article:modified_time"]').attr('content')
+  return { rows, modified }
+}
+
+/** Page « Prix des médicaments » : N°, CODE, NOM COMMERCIAL, GROUPE THÉRAPEUTIQUE, PRIX. */
+export function parsePriceList(html) {
+  const { rows, modified } = tableRows(html)
+  const items = rows
+    .map((r) => ({ code: r['CODE']?.trim() || undefined, name: r['NOM COMMERCIAL']?.trim(), group: r['GROUPE THERAPEUTIQUE']?.trim() || undefined, price: toInt(r['PRIX']) }))
+    .filter((r) => r.name)
+  return { items, modified }
+}
+
+/** Page « Médicaments pris en charge par la CMU » : N°, NOM COMMERCIAL, PRIX, DCI, CLASSE THERAPEUTIQUE, PRESENTATION. */
+export function parseCmuList(html) {
+  const { rows, modified } = tableRows(html)
+  const items = rows
+    .map((r) => ({ name: r['NOM COMMERCIAL']?.trim(), price: toInt(r['PRIX']), dci: r['DCI']?.trim() || undefined, therapeuticClass: r['CLASSE THERAPEUTIQUE']?.trim() || undefined, form: r['PRESENTATION']?.trim() || undefined }))
+    .filter((r) => r.name)
+  return { items, modified }
+}
+
+/** Clé de rapprochement des noms commerciaux (espaces et ponctuation ignorés). */
+export const medKey = (name) => strip(name).replace(/\s+/g, '')
+
+/* ---------- Annuaire HTML (pages /toutes-les-pharmacies-en-cote-divoire/page/N/) ---------- */
+
+export function parseDirectoryPage(html) {
+  const $ = cheerio.load(html)
+  const total = toInt($('#dirpro_directories .text-small').first().text())
+  const pages = $('a.page-numbers, span.page-numbers').map((_, a) => toInt($(a).text())).get().filter(Boolean)
+  const seen = new Set()
+  const items = []
+  $('.listingdata-col').each((_, col) => {
+    const a = $(col).find('a.title').first()
+    const link = a.attr('href')
+    if (!link || seen.has(link)) return
+    seen.add(link)
+    const infos = $(col).find('p.address').map((__, p) => cellText($, p)).get()
+    const [category = '', phone = '', city = ''] = infos
+    items.push({ name: cellText($, a), link, slug: link.split('/').filter(Boolean).pop(), category, phone: phone.replace(/\D/g, '').length >= 8 ? phone : '', city })
+  })
+  return { total, lastPage: pages.length ? Math.max(...pages) : 1, items }
+}
