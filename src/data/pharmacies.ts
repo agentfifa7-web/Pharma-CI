@@ -11,7 +11,7 @@ export { PHARMACY_META }
 export const PHARMACIES: Pharmacy[] = []
 
 /**
- * Remplace (sur place) l'annuaire de démonstration par les données synchronisées,
+ * Remplace (sur place) l'annuaire par les données synchronisées,
  * pour que tous les modules qui importent PHARMACIES / COMMUNES / CITIES les voient.
  */
 export function replacePharmacies(list: Pharmacy[], meta: Omit<PharmacyMeta, 'live'>) {

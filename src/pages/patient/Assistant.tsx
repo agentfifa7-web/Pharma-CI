@@ -128,7 +128,7 @@ export default function Assistant() {
         />
         <Button type="submit" disabled={!input.trim() || typing} aria-label="Envoyer"><Send size={16} /></Button>
       </form>
-      <p className="mt-2 text-center text-[11px] text-slate-400">Réponses générées localement à partir de la base PHARMA MED de démonstration.</p>
+      <p className="mt-2 text-center text-[11px] text-slate-400">Réponses générées localement à partir de la base PHARMA MED (prix et liste CMU publiés sur pharmacies-de-garde.ci).</p>
     </div>
   )
 }

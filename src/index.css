@@ -36,3 +36,5 @@ html.senior { font-size: 19px; }
 
 /* Les enfants de grilles/flex ne doivent jamais forcer un débordement horizontal sur mobile */
 .grid > *, .flex-col > * { min-width: 0; }
+/* Libellés de la source sans espaces après les virgules (ex. « DERMATOLOGIE,DERMOCORTICOIDE ») */
+.break-source { overflow-wrap: anywhere; }

@@ -166,12 +166,12 @@ export default function AgentMission() {
           </Section>
 
           <Section title="Instructions">
-            <Card className="bg-ink text-white">
+            <Card className="!border-ink !bg-ink text-white">
               <ul className="space-y-2 text-sm">
-                <li className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand-300" /> Présenter l'ordonnance au pharmacien.</li>
-                <li className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand-300" /> Acheter <b>uniquement</b> les produits prescrits.</li>
-                <li className="flex gap-2"><Ban size={16} className="mt-0.5 shrink-0 text-red-300" /> Ne <b>jamais substituer</b> un médicament prescrit.</li>
-                <li className="flex gap-2"><Receipt size={16} className="mt-0.5 shrink-0 text-brand-300" /> Récupérer la <b>facture originale</b> et la photographier.</li>
+                <li className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand-300" /> <span>Présenter l'ordonnance au pharmacien.</span></li>
+                <li className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand-300" /> <span>Acheter <b>uniquement</b> les produits prescrits.</span></li>
+                <li className="flex gap-2"><Ban size={16} className="mt-0.5 shrink-0 text-red-300" /> <span>Ne <b>jamais substituer</b> un médicament prescrit.</span></li>
+                <li className="flex gap-2"><Receipt size={16} className="mt-0.5 shrink-0 text-brand-300" /> <span>Récupérer la <b>facture originale</b> et la photographier.</span></li>
               </ul>
             </Card>
           </Section>

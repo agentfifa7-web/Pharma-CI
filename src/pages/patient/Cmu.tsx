@@ -104,7 +104,7 @@ export default function Cmu() {
                       <p className="text-sm font-semibold text-slate-700">{listed ? 'Sur la liste CMU publiée' : 'Absent de la liste CMU publiée — à vérifier'}</p>
                       <dl className="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
                         {details.filter(([, v]) => !!v).map(([k, v]) => (
-                          <div key={k}><dt className="inline text-slate-500">{k} : </dt><dd className="inline font-semibold">{v}</dd></div>
+                          <div key={k}><dt className="inline text-slate-500">{k} : </dt><dd className="break-source inline font-semibold">{v}</dd></div>
                         ))}
                         {m.price && <div><dt className="inline text-slate-500">Prix publié : </dt><dd className="inline font-semibold tabular-nums">{fcfa(m.price.amount)}</dd></div>}
                         {!listed && m.cmuCandidates && m.cmuCandidates.length > 0 && (

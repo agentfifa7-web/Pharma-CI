@@ -103,7 +103,7 @@ export function OpenBadge({ state, label }: { state: OpenState; label: string })
 
 export const PRICE_LEVEL: Record<PriceLevel, { label: string; tone: Tone; help: string }> = {
   indicatif: { label: 'Prix indicatif', tone: 'slate', help: 'Ordre de grandeur non vérifié. Peut varier selon la pharmacie.' },
-  communique: { label: 'Prix communiqué', tone: 'blue', help: 'Prix communiqué/actualisé par une source, non confirmé par facture.' },
+  communique: { label: 'Prix publié', tone: 'blue', help: 'Prix publié par la source (pharmacies-de-garde.ci). Le montant définitif est celui de la facture de la pharmacie.' },
   confirme: { label: 'Prix confirmé', tone: 'green', help: 'Prix confirmé par une facture pharmacie récente.' },
 }
 
