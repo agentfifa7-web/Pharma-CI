@@ -20,7 +20,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { matchKey, parseCmuList, parseDirectoryPage, parseGardePage, parseListingPage, parsePriceList } from './parse.mjs'
+import { fixCategory, isHealthNews, isPharmacyListing, isTemplateHours, matchKey, parseCmuList, parseDirectoryPage, parseGardePage, parseListingPage, parsePriceList } from './parse.mjs'
 import { buildMedications, CMU_URL, PRICE_URL } from './medications.mjs'
 import { centerOf, CITIES, ABIDJAN_COMMUNES, strip, titleCase } from './communes.mjs'
 
@@ -119,7 +119,6 @@ async function directoryFromHtml() {
 async function withDetails(listings, cache, { deadline = Infinity, save } = {}) {
   let fetched = 0
   let postponed = 0
-  const isPharmacy = (l) => /pharmac/i.test(l.category ?? '')
   const ordered = [...listings.filter(isPharmacy), ...listings.filter((l) => !isPharmacy(l))]
   for (const l of ordered) {
     const c = cache[l.id]
@@ -148,7 +147,7 @@ async function withDetails(listings, cache, { deadline = Infinity, save } = {}) 
   return listings
 }
 
-const isPharmacy = (l) => /pharmac/i.test(l.category) || (!l.category && /^pharmacie\b/i.test(l.title))
+const isPharmacy = isPharmacyListing
 
 /** Ville/commune à partir des localisations de la fiche. */
 function placeOf(locations, extra = '') {
@@ -187,7 +186,7 @@ function toPharmacy({ id, name, note, phone, city, commune, quartier, position, 
     address: address ?? [quartier, commune !== city ? commune : undefined, city].filter(Boolean).join(', '),
     commune, city, region: REGION(city), position, positionApprox: approx || undefined,
     phone: phone || '',
-    hours: hours ?? DEFAULT_HOURS, hoursApprox: hours ? undefined : true,
+    hours: hours ?? DEFAULT_HOURS, hoursApprox: !hours || isTemplateHours(hours) ? true : undefined,
     services: note ? [note] : [],
     gardeGroup: -1,
     garde: period ? { start: period.start, end: period.end } : undefined,
@@ -260,8 +259,8 @@ function buildEstablishments(directory) {
     if (!position) continue
     out.push({
       id: `hp-${l.id}`,
-      kind: kindOf(l.category),
-      category: l.category || undefined,
+      kind: kindOf(fixCategory(l) || l.title),
+      category: fixCategory(l) || undefined,
       name: titleCase(l.title),
       commune: place.commune,
       city: place.city,
@@ -271,7 +270,7 @@ function buildEstablishments(directory) {
       phone: phoneOf(l.phone),
       services: l.category ? [l.category] : [],
       open24h: false,
-      hours: l.detail?.hours,
+      hours: isTemplateHours(l.detail?.hours) ? undefined : l.detail?.hours, // horaires modèle de la source : non significatifs
       sourceUrl: l.link,
     })
   }
@@ -280,21 +279,31 @@ function buildEstablishments(directory) {
 
 /* ---------- Actualités santé (articles WordPress) ---------- */
 
-const HEALTH = /pharmac|sant[ée]|m[ée]dic|garde|maladie|vaccin|paludisme|h[ôo]pital|clinique|soin|cmu|assurance|docteur|pharmacien|traitement|pr[ée]vention|ordre/i
 
 async function fetchNews() {
-  const { body } = await get(`${BASE}/wp-json/wp/v2/posts?per_page=50&_embed=wp:term,wp:featuredmedia`, { json: true })
-  return body
-    .map((p) => {
+  const out = []
+  for (let page = 1; page <= 5; page++) {
+    let res
+    try {
+      res = await get(`${BASE}/wp-json/wp/v2/posts?per_page=50&page=${page}&_embed=wp:term,wp:featuredmedia`, { json: true })
+    } catch (e) {
+      if (page === 1) throw e
+      break // au-delà de la dernière page, WordPress répond 400
+    }
+    for (const p of res.body) {
       const title = decode(p.title?.rendered)
       const excerpt = decode(p.excerpt?.rendered).replace(/\s*\[…\]$|\s*Lire la suite.*$/i, '')
       const cats = (p._embedded?.['wp:term'] ?? []).flat().filter((t) => t.taxonomy === 'category').map((t) => decode(t.name))
-      return {
+      const n = {
         id: `news-${p.id}`, title, excerpt, date: p.date_gmt ?? p.date, url: p.link, category: cats[0] ?? 'Santé',
         image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url,
       }
-    })
-    .filter((n) => HEALTH.test(`${n.title} ${n.excerpt}`))
+      if (isHealthNews(n)) out.push(n)
+    }
+    if (page >= Number(res.headers.get('x-wp-totalpages') ?? 1)) break
+    await sleep(DELAY_MS)
+  }
+  return out.slice(0, 40)
 }
 
 /* ---------- Programme principal ---------- */
@@ -359,6 +368,15 @@ async function main() {
       (await step('annuaire via API', directoryFromApi)) ??
       (await step('annuaire via pages HTML', directoryFromHtml)) ??
       []
+    // L'API ne donne pas les téléphones : on les reprend des pages de l'annuaire (56 pages).
+    if (directory.length && !directory.some((l) => l.phone)) {
+      const pages = await step('téléphones (pages de l\'annuaire)', directoryFromHtml)
+      if (pages) {
+        const phoneByLink = new Map(pages.filter((p) => p.phone).map((p) => [p.link, p.phone]))
+        for (const l of directory) l.phone = phoneByLink.get(l.link) ?? ''
+        log(`téléphones : ${directory.filter((l) => l.phone).length} fiches`)
+      }
+    }
     if (directory.length) await withDetails(directory, cache, { deadline: detailsDeadline, save: saveCache })
   }
 

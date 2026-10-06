@@ -174,3 +174,43 @@ export function parseDirectoryPage(html) {
   })
   return { total, lastPage: pages.length ? Math.max(...pages) : 1, items }
 }
+
+/**
+ * Fiche d'annuaire = pharmacie ? La catégorie de la source ne suffit pas : des centres d'imagerie
+ * y sont classés « Pharmacies ». On exige aussi un nom de pharmacie (fautes de frappe tolérées :
+ * « Phamacie », « Parmacie »).
+ */
+export function isPharmacyListing({ category = '', title = '' }) {
+  const pharmacyName = /\bph?a?r?m[a-z]{0,2}cie|\bpharma|\bofficine\b/i.test(title)
+  return pharmacyName && (/pharmac/i.test(category) || !category)
+}
+
+/** Libellé de catégorie pour un établissement que la source a classé à tort en « Pharmacies ». */
+export function fixCategory({ category = '', title = '' }) {
+  if (!/pharmac/i.test(category) || isPharmacyListing({ category, title })) return category
+  const t = strip(title)
+  if (/IMAG|RADIO|ECHOGRAPH|ONCOLOG/.test(t)) return 'Imagerie médicale'
+  if (/CENTRE DE SANTE/.test(t)) return 'Centre de santé'
+  if (/CABINET MEDICAL|CENTRE MEDICAL/.test(t)) return 'Centre médical'
+  return ''
+}
+
+const HEALTH_WORDS = /pharmac|sant[ée]|m[ée]dic|maladie|vaccin|paludisme|h[ôo]pital|clinique|soins?\b|cmu|pharmacien|traitement|pr[ée]vention|[ée]pid[ée]m|nutrition|grossesse|diab[èe]te|hypertension|cancer|vih|sida|covid|chol[ée]ra|dengue/i
+
+/**
+ * Article santé à afficher dans PHARMA NEWS ? On écarte les anciennes listes de garde (l'application
+ * affiche la liste à jour) et la catégorie « Autres » (annonces sans rapport : location de voitures…).
+ */
+export function isHealthNews({ title = '', excerpt = '', category = '' }) {
+  if (/^pharmacies? de garde\b/i.test(title.trim())) return false
+  if (/^autres?$/i.test(category.trim())) return false
+  return /sant[ée]|conseil|m[ée]dic/i.test(category) || HEALTH_WORDS.test(`${title} ${excerpt}`)
+}
+
+/**
+ * Horaires « modèle » de l'annuaire source (lun.–ven. 8 h–20 h, sam. 8 h–12 h, dim. fermé) : ils
+ * figurent sur presque toutes les fiches, y compris les cliniques. Ce ne sont pas des horaires
+ * propres à l'établissement : l'application les présente comme indicatifs.
+ */
+const TEMPLATE_HOURS = JSON.stringify([null, ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '20:00'], ['08:00', '12:00']])
+export const isTemplateHours = (hours) => !!hours && JSON.stringify(hours) === TEMPLATE_HOURS
