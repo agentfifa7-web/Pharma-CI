@@ -6,6 +6,7 @@ import { MEDICATIONS } from '../../data/medications'
 import { DRUG_ALERTS } from '../../data/alerts'
 import { normalize } from '../../lib/format'
 import { Button, ButtonLink, Card, Notice, PageHeader } from '../../components/ui'
+import { FormIcon } from '../../components/FormIcon'
 
 // API BarcodeDetector (non incluse dans les types DOM standard)
 type DetectedBarcode = { rawValue: string; format: string }
@@ -177,7 +178,7 @@ export default function Scan() {
 
       {result?.kind === 'produit' && (
         <div className="rounded-3xl border-2 border-brand-200 bg-brand-50 p-5">
-          <p className="text-4xl">💊</p>
+          <FormIcon m={result.med} className="h-14 w-14 rounded-2xl" />
           <p className="mt-2 text-lg font-extrabold text-brand-800">Produit identifié</p>
           <p className="text-sm text-slate-700">
             Le code <b className="font-mono">{result.code}</b> correspond à <b>{result.med.brand}</b>
