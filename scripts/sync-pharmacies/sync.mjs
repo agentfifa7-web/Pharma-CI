@@ -34,6 +34,9 @@ const GARDE_URL = `${BASE}/liste-des-pharmacies-de-garde-en-cote-divoire/`
 const DIRECTORY_URL = `${BASE}/toutes-les-pharmacies-en-cote-divoire/`
 const UA = 'PHARMA-CI-sync/1.0 (+https://github.com/agentfifa7-web/pharma-ci)'
 const DELAY_MS = Number(process.env.SYNC_DELAY_MS ?? 600)
+// Temps maximal consacré aux fiches détaillées : au-delà, la synchronisation se termine proprement
+// avec ce qu'elle a (le cache est conservé) et le lancement suivant reprend là où elle s'est arrêtée.
+const DETAILS_BUDGET_MIN = Number(process.env.SYNC_DETAILS_BUDGET_MIN ?? 80)
 
 const args = new Set(process.argv.slice(2))
 const OFFLINE = args.has('--fixtures')
@@ -108,26 +111,40 @@ async function directoryFromHtml() {
   return out
 }
 
-/** Détails (GPS, adresse, horaires) — uniquement pour les fiches nouvelles ou modifiées. */
-async function withDetails(listings, cache) {
+/**
+ * Détails (GPS, adresse, horaires) — uniquement pour les fiches nouvelles ou modifiées.
+ * Les pharmacies passent en premier ; le cache est enregistré régulièrement (`save`) et le
+ * téléchargement s'arrête à `deadline` (les fiches restantes seront traitées au prochain lancement).
+ */
+async function withDetails(listings, cache, { deadline = Infinity, save } = {}) {
   let fetched = 0
-  for (const l of listings) {
+  let postponed = 0
+  const isPharmacy = (l) => /pharmac/i.test(l.category ?? '')
+  const ordered = [...listings.filter(isPharmacy), ...listings.filter((l) => !isPharmacy(l))]
+  for (const l of ordered) {
     const c = cache[l.id]
     if (c && (c.modified === l.modified || (!l.modified && c.detail))) {
       l.detail = c.detail
       continue
     }
+    if (Date.now() > deadline) {
+      if (c?.detail) l.detail = c.detail // ancienne version, mieux que rien
+      postponed++
+      continue
+    }
     try {
       l.detail = parseListingPage((await get(l.link)).body)
+      cache[l.id] = { modified: l.modified, detail: l.detail } // échec : pas mis en cache, réessayé au prochain lancement
       fetched++
       if (fetched % 50 === 0) log(`fiches détaillées : ${fetched}`)
+      if (save && fetched % 100 === 0) await save()
     } catch (e) {
+      if (c?.detail) l.detail = c.detail
       log('fiche ignorée', l.link, e.message)
     }
-    cache[l.id] = { modified: l.modified, detail: l.detail }
     await sleep(DELAY_MS)
   }
-  log(`fiches détaillées téléchargées : ${fetched} (déjà en cache : ${listings.length - fetched})`)
+  log(`fiches détaillées téléchargées : ${fetched} · reportées au prochain lancement : ${postponed} · en cache : ${listings.length - fetched - postponed}`)
   return listings
 }
 
@@ -301,6 +318,12 @@ async function step(label, fn) {
 async function main() {
   log(OFFLINE ? 'mode hors ligne (fixtures)' : `source : ${BASE}`)
   const cache = existsSync(CACHE) ? JSON.parse(await readFile(CACHE, 'utf8')) : {}
+  const saveCache = async () => {
+    if (OFFLINE) return
+    await mkdir(dirname(CACHE), { recursive: true })
+    await writeFile(CACHE, JSON.stringify(cache) + '\n')
+  }
+  const detailsDeadline = Date.now() + DETAILS_BUDGET_MIN * 60_000
 
   // 1. Pharmacies de garde (obligatoire)
   const garde = parseGardePage(OFFLINE ? await FIX('garde.html') : (await get(GARDE_URL)).body)
@@ -336,7 +359,7 @@ async function main() {
       (await step('annuaire via API', directoryFromApi)) ??
       (await step('annuaire via pages HTML', directoryFromHtml)) ??
       []
-    if (directory.length) await withDetails(directory, cache)
+    if (directory.length) await withDetails(directory, cache, { deadline: detailsDeadline, save: saveCache })
   }
 
   const previous = await readJson('pharmacies.json')
@@ -365,10 +388,7 @@ async function main() {
     })
   }
 
-  if (!OFFLINE) {
-    await mkdir(dirname(CACHE), { recursive: true })
-    await writeFile(CACHE, JSON.stringify(cache) + '\n')
-  }
+  await saveCache()
 }
 
 main().catch((e) => {
