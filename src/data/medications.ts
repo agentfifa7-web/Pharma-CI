@@ -1,4 +1,4 @@
-import type { Medication } from '../types'
+import type { MedImage, Medication } from '../types'
 
 /**
  * Base PHARMA MED — alimentée au démarrage par /data/medicaments.json, produit par
@@ -58,3 +58,27 @@ export const medById = (id?: string) => (id ? BY_ID.get(id) : undefined)
 
 /** Libellé court : nom commercial sans le conditionnement (ex. « B/30 »). */
 export const medShortName = (m: Medication) => m.brand.replace(/\s+(B|BTE|BT|FL|T|TUBE|PLAQUETTE)\s*\/.*$/i, '').trim()
+
+/* ---------- Illustrations (public/data/medicaments-images.json) ---------- */
+
+const IMAGES = new Map<string, MedImage>()
+let IMAGE_KEYS: string[] = []
+/** Même normalisation que dciKey() dans scripts/sync-pharmacies/images.mjs. */
+const dciKey = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim()
+
+export function replaceMedImages(data: { images: Record<string, MedImage | { dci: string; none: true }> }) {
+  IMAGES.clear()
+  for (const [key, e] of Object.entries(data.images ?? {})) if (!('none' in e)) IMAGES.set(key, e)
+  IMAGE_KEYS = [...IMAGES.keys()].sort((a, b) => b.length - a.length)
+}
+
+/**
+ * Illustration de la substance active : par la DCI publiée, sinon quand le nom commercial
+ * commence par une DCI connue (génériques, ex. « PARACETAMOL 500MG CP »).
+ */
+export function medImage(m: Medication): MedImage | undefined {
+  if (m.dci) return IMAGES.get(dciKey(m.dci))
+  const name = dciKey(m.brand)
+  const key = IMAGE_KEYS.find((k) => name === k || name.startsWith(`${k} `))
+  return key ? IMAGES.get(key) : undefined
+}

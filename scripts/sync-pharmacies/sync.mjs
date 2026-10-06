@@ -11,6 +11,7 @@
  *   medicaments.json    — base PHARMA MED (prix publiés + liste CMU) au format `Medication`
  *   etablissements.json — cliniques, laboratoires, centres de santé… au format `HealthPlace`
  *   actualites.json     — articles santé publiés par la source (titre, extrait, lien)
+ *   medicaments-images.json — illustration libre de droits par DCI (Wikidata + Wikimedia Commons)
  * Cache : scripts/sync-pharmacies/cache/listings.json (fiches déjà téléchargées).
  *
  * Bonnes pratiques : requêtes espacées, User-Agent identifié, cache. Vérifier les conditions
@@ -22,6 +23,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { matchKey, parseCmuList, parseDirectoryPage, parseGardePage, parseListingPage, parsePriceList } from './parse.mjs'
 import { buildMedications, CMU_URL, PRICE_URL } from './medications.mjs'
+import { findMedImages } from './images.mjs'
 import { centerOf, CITIES, ABIDJAN_COMMUNES, strip, titleCase } from './communes.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -362,6 +364,22 @@ async function main() {
     await step('actualités', async () => {
       const news = await fetchNews()
       await writeJson('actualites.json', { source: BASE, generatedAt: NOW, articles: news })
+    })
+  }
+
+  // 5. Images libres de droits des médicaments (une par DCI, revérifiée tous les 30 jours)
+  if (!OFFLINE) {
+    await step('images des médicaments', async () => {
+      const meds = (await readJson('medicaments.json'))?.medications ?? []
+      const dcis = [...new Set(meds.map((m) => m.d).filter(Boolean))].sort()
+      const previous = (await readJson('medicaments-images.json'))?.images
+      const getJson = async (url) => { await sleep(DELAY_MS / 3); return (await get(url, { json: true })).body }
+      const images = await findMedImages(dcis, previous, getJson, { log })
+      await writeJson('medicaments-images.json', {
+        generatedAt: NOW,
+        source: 'Wikidata + Wikimedia Commons (licences libres : domaine public, CC0, CC BY, CC BY-SA)',
+        images,
+      })
     })
   }
 
