@@ -39,7 +39,9 @@ const DELAY_MS = Number(process.env.SYNC_DELAY_MS ?? 600)
 const DETAILS_BUDGET_MIN = Number(process.env.SYNC_DETAILS_BUDGET_MIN ?? 80)
 
 const args = new Set(process.argv.slice(2))
-const OFFLINE = args.has('--fixtures')
+// --from-cache : reconstruit les fichiers à partir du cache des fiches (sans requête au site).
+const FROM_CACHE = args.has('--from-cache')
+const OFFLINE = args.has('--fixtures') || FROM_CACHE
 const QUICK = args.has('--garde-only')
 const NOW = new Date().toISOString()
 
@@ -195,18 +197,44 @@ function toPharmacy({ id, name, note, phone, city, commune, quartier, position, 
   }
 }
 
+const kmBetween = (a, b) => {
+  const t = Math.PI / 180
+  const x = (b.lng - a.lng) * t * Math.cos(((a.lat + b.lat) * t) / 2)
+  const y = (b.lat - a.lat) * t
+  return Math.sqrt(x * x + y * y) * 6371
+}
+
+/**
+ * Pharmacies = liste de garde + fiches « pharmacie » de l'annuaire.
+ * L'annuaire contient des doublons (même pharmacie publiée plusieurs fois) : deux fiches de même nom
+ * à moins de 300 m (ou dans la même commune si l'une n'a pas de GPS) sont fusionnées. Des pharmacies homonymes dans des communes
+ * différentes (ex. « Pharmacie du Marché » à Yopougon et à Adjamé) restent distinctes.
+ */
 function buildPharmacies(garde, directory) {
-  const byKey = new Map()
+  const groups = new Map() // nom + ville → fiches distinctes
+  let duplicates = 0
   for (const l of directory.filter(isPharmacy)) {
     const place = placeOf(l.locations, l.detail?.address)
-    byKey.set(`${matchKey(l.title)}|${strip(place.city)}`, { ...l, place })
+    const key = `${matchKey(l.title)}|${strip(place.city)}`
+    const list = groups.get(key) ?? []
+    const pos = l.detail?.position
+    // Même lieu : à moins de 300 m (les deux ont un GPS), ou même commune quand l'un n'a pas de GPS.
+    const twin = list.find((d) => (d.detail?.position && pos ? kmBetween(d.detail.position, pos) < 0.3 : d.place.commune === place.commune))
+    if (twin) {
+      duplicates++
+      if (!twin.phone && l.phone) twin.phone = l.phone
+      if (!twin.detail?.position && pos) twin.detail = l.detail
+      continue
+    }
+    list.push({ ...l, place })
+    groups.set(key, list)
   }
   const out = []
-  const used = new Set()
+  let matched = 0
   for (const g of garde.entries) {
-    const key = `${matchKey(g.name)}|${strip(g.city)}`
-    const d = byKey.get(key)
-    if (d) used.add(key)
+    const candidates = (groups.get(`${matchKey(g.name)}|${strip(g.city)}`) ?? []).filter((c) => !c.used)
+    const d = candidates.find((c) => strip(c.place.commune) === strip(g.commune ?? '')) ?? (candidates.length === 1 || g.city !== 'Abidjan' ? candidates[0] : undefined)
+    if (d) { d.used = true; matched++ }
     const center = centerOf(g.city, g.commune) ?? { lat: 5.3364, lng: -4.0267 }
     out.push(toPharmacy({
       id: d ? `pg-${d.id}` : `pg-g-${matchKey(g.name).toLowerCase()}-${strip(g.city).toLowerCase().replace(/ /g, '')}`,
@@ -216,16 +244,18 @@ function buildPharmacies(garde, directory) {
       link: d?.link, period: garde.period,
     }))
   }
-  for (const [key, d] of byKey) {
-    if (used.has(key)) continue
+  let skipped = 0
+  for (const list of groups.values()) for (const d of list) {
+    if (d.used) continue
     const center = centerOf(d.place.city, d.place.commune)
     const position = d.detail?.position ?? (center && jitter(center, d.title))
-    if (!position) continue
+    if (!position) { skipped++; continue }
     out.push(toPharmacy({
       id: `pg-${d.id}`, name: titleCase(d.title), phone: phoneOf(d.phone), city: d.place.city, commune: d.place.commune,
       position, approx: !d.detail?.position, hours: d.detail?.hours, address: d.detail?.address, link: d.link,
     }))
   }
+  log(`pharmacies : ${out.length} (garde ${garde.entries.length}, dont ${matched} rapprochées de l'annuaire) · doublons de l'annuaire fusionnés : ${duplicates} · sans position : ${skipped}`)
   return dedupeIds(out)
 }
 
@@ -325,7 +355,7 @@ async function step(label, fn) {
 }
 
 async function main() {
-  log(OFFLINE ? 'mode hors ligne (fixtures)' : `source : ${BASE}`)
+  log(FROM_CACHE ? 'mode hors ligne (cache des fiches)' : OFFLINE ? 'mode hors ligne (fixtures)' : `source : ${BASE}`)
   const cache = existsSync(CACHE) ? JSON.parse(await readFile(CACHE, 'utf8')) : {}
   const saveCache = async () => {
     if (OFFLINE) return
@@ -356,7 +386,16 @@ async function main() {
 
   // 3. Annuaire complet (pharmacies + autres établissements)
   let directory = []
-  if (OFFLINE) {
+  if (FROM_CACHE) {
+    // Liens des fiches : repris des fichiers publiés (le cache ne les contient pas).
+    const links = new Map()
+    for (const p of (await readJson('pharmacies.json'))?.pharmacies ?? []) if (p.sourceUrl?.includes('/listing/')) links.set(p.id.replace(/^pg-/, '').replace(/-\d+$/, ''), p.sourceUrl)
+    for (const p of (await readJson('etablissements.json'))?.places ?? []) if (p.sourceUrl) links.set(p.id.replace(/^hp-/, ''), p.sourceUrl)
+    directory = Object.entries(cache).filter(([, c]) => c.detail).map(([id, c]) => ({
+      id, link: links.get(id), modified: c.modified, title: c.detail.name ?? '', category: c.detail.categories ?? '', locations: c.detail.locations ?? [], detail: c.detail,
+    }))
+    log(`annuaire (cache) : ${directory.length} fiches`)
+  } else if (OFFLINE) {
     const page1 = parseDirectoryPage(await FIX('annuaire-page1.html'))
     const eben = parseListingPage(await FIX('listing-eben-ezer.html'))
     directory = [
