@@ -94,6 +94,7 @@ src/
 | Médicaments : code, nom commercial, groupe thérapeutique, prix | pharmacies-de-garde.ci — « Prix des médicaments en pharmacie » | `public/data/medicaments.json` |
 | Liste CMU : nom, prix, DCI, classe, présentation | pharmacies-de-garde.ci — « Médicaments pris en charge par la CMU » | `public/data/medicaments.json` |
 | Actualités santé | pharmacies-de-garde.ci — articles | `public/data/actualites.json` |
+| Images des médicaments (une par DCI : photo ou formule chimique) | Wikidata → Wikimedia Commons, licences libres uniquement (domaine public, CC0, CC BY, CC BY-SA), crédit affiché sur la fiche | `public/data/medicaments-images.json` |
 | Numéros d'urgence | numéros nationaux (SAMU 185, pompiers 180, police 170/110/111) | `src/data/health.ts` |
 
 Ce qui n'a **pas** de source réelle reste **vide** (avec un message explicatif) plutôt que d'être inventé :

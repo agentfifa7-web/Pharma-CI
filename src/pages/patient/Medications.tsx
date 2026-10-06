@@ -5,6 +5,7 @@ import type { Medication } from '../../types'
 import { MEDICATIONS, MEDICATION_META } from '../../data/medications'
 import { searchMedications } from '../../data/assistant'
 import { dateFr, fcfa } from '../../lib/format'
+import { MedThumb } from '../../components/MedImage'
 import { Badge, Button, Chips, CmuBadge, EmptyState, PageHeader, PriceLevelBadge, Select, cx } from '../../components/ui'
 
 type Filter = 'tous' | 'cmu' | 'hors_cmu'
@@ -142,7 +143,7 @@ export default function Medications() {
               return (
                 <Link key={m.id} to={`/medicaments/${m.id}`} className="group flex flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-brand-200 hover:shadow-md">
                   <div className="flex items-start gap-3">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-xl">💊</div>
+                    <MedThumb m={m} className="h-11 w-11 rounded-xl bg-brand-50 text-xl" />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold leading-tight group-hover:text-brand-700">{m.brand}</p>
                       {sub && <p className="mt-0.5 text-sm text-slate-500">{sub}</p>}

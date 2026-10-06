@@ -38,6 +38,19 @@ export type OpenState = 'open' | 'soon' | 'closed'
 export type PriceLevel = 'indicatif' | 'communique' | 'confirme'
 export type CmuStatus = 'pris_en_charge' | 'non_pris_en_charge' | 'a_verifier'
 
+/** Illustration libre de droits de la substance active (Wikimedia Commons), avec le crédit exigé par la licence. */
+export type MedImage = {
+  dci: string
+  src: string
+  /** Page du fichier sur Wikimedia Commons (auteur, licence complète). */
+  page: string
+  credit: string
+  license: string
+  licenseUrl?: string
+  /** photo (comprimés, flacon…) ou structure (formule chimique). */
+  kind: 'photo' | 'structure'
+}
+
 export type Medication = {
   id: string
   /** Code produit publié par la source. */

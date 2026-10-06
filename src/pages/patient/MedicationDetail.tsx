@@ -5,6 +5,7 @@ import type { Medication } from '../../types'
 import { medById, medShortName } from '../../data/medications'
 import { DRUG_ALERTS } from '../../data/alerts'
 import { dateFr, fcfa } from '../../lib/format'
+import { MedIllustration, MedThumb } from '../../components/MedImage'
 import { Badge, ButtonLink, CMU_LABEL, Card, CmuBadge, EmptyState, Notice, PageHeader, PRICE_LEVEL, PriceLevelBadge, Section, cx } from '../../components/ui'
 
 const MISSING = 'Non renseigné par la source — consultez la notice ou votre pharmacien'
@@ -21,7 +22,7 @@ function Row({ label, children }: { label: string; children?: ReactNode }) {
 function MedLink({ e }: { e: Medication }) {
   return (
     <Link to={`/medicaments/${e.id}`} className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm hover:border-brand-200">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100">💊</span>
+      <MedThumb m={e} className="h-9 w-9 rounded-xl bg-slate-100" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold">{e.brand}</p>
         <p className="text-xs text-slate-500">{[e.dci, e.dosage, e.form].filter(Boolean).join(' · ') || e.therapeuticClass}</p>
@@ -75,7 +76,7 @@ export default function MedicationDetail() {
 
       <div className="mb-5 rounded-3xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-lg shadow-brand-700/20">
         <div className="flex items-start gap-4">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/15 text-3xl">💊</div>
+          <MedThumb key={m.id} m={m} className="h-14 w-14 rounded-2xl bg-white/15 text-3xl" />
           <div className="min-w-0">
             {m.therapeuticClass && <p className="text-xs font-semibold uppercase tracking-wide text-white/70">{m.therapeuticClass}</p>}
             <p className="text-xl font-extrabold leading-tight">{m.brand}</p>
@@ -112,6 +113,7 @@ export default function MedicationDetail() {
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           <Section title="Fiche médicament">
+            <div className="mb-3"><MedIllustration key={m.id} m={m} /></div>
             <Card>
               <dl>
                 {m.code && <Row label="Code produit"><span className="font-mono">{m.code}</span></Row>}
