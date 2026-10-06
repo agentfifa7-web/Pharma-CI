@@ -79,3 +79,40 @@ test("page d'annuaire", () => {
   assert.equal(items[0].city, 'Abidjan')
   assert.equal(items[1].phone, '21564221')
 })
+
+import { fixCategory, isHealthNews, isPharmacyListing } from './parse.mjs'
+
+test('classement des fiches : pharmacie ou autre établissement', () => {
+  assert.ok(isPharmacyListing({ category: 'Pharmacies', title: 'Pharmacie AZI' }))
+  assert.ok(isPharmacyListing({ category: 'Toutes les pharmacies', title: 'Grande Pharmacie du Plateau' }))
+  assert.ok(isPharmacyListing({ category: 'Pharmacies', title: 'Phamacie Providence' }))
+  assert.ok(isPharmacyListing({ category: 'Pharmacies', title: 'Parmacie Kinninya' }))
+  assert.ok(isPharmacyListing({ category: 'Pharmacies', title: 'Pharmarcie Notre Dame' }))
+  assert.ok(!isPharmacyListing({ category: 'Pharmacies', title: 'CIMR' }))
+  assert.ok(isPharmacyListing({ category: '', title: 'Pharmacie Eben-Ezer' }))
+  // classés « Pharmacies » par la source mais n'en sont pas
+  assert.ok(!isPharmacyListing({ category: 'Pharmacies', title: 'Radiologie hma' }))
+  assert.ok(!isPharmacyListing({ category: 'Pharmacies', title: 'CABINET MEDICAL AZALEE' }))
+  assert.ok(!isPharmacyListing({ category: 'Pharmacies', title: 'Petit Marché de Guiglo' }))
+  assert.ok(!isPharmacyListing({ category: "Laboratoire d'analyses médicales", title: 'Pharmacie et Laboratoire du Longchamp' }))
+  assert.equal(fixCategory({ category: 'Pharmacies', title: "Centre d'Imagerie Médicale d'Abidjan" }), 'Imagerie médicale')
+  assert.equal(fixCategory({ category: 'Pharmacies', title: 'Centre de Santé Saint-Camille' }), 'Centre de santé')
+  assert.equal(fixCategory({ category: 'Pharmacies', title: 'Petit Marché de Guiglo' }), '')
+  assert.equal(fixCategory({ category: 'Clinique', title: 'Clinique X' }), 'Clinique')
+})
+
+test('filtre des actualités santé', () => {
+  assert.ok(isHealthNews({ title: 'Campagne de vaccination contre la rougeole', category: 'Actualités' }))
+  assert.ok(isHealthNews({ title: 'Souscrire à une assurance maladie', category: 'Tout sur la santé' }))
+  assert.ok(!isHealthNews({ title: 'Pharmacies de garde à Abidjan du Samedi 21 Mars 2026', category: 'Pharmacies' }))
+  assert.ok(!isHealthNews({ title: 'Location de Berline, SUV, 4×4', excerpt: 'service de soins du véhicule', category: 'Autres' }))
+  assert.ok(!isHealthNews({ title: 'Docteur X nommée Directrice de l’Usine de Potabilisation', category: 'Autres' }))
+})
+
+import { isTemplateHours, parseListingPage as parseListing } from './parse.mjs'
+
+test('horaires modèle de la source', () => {
+  assert.ok(isTemplateHours(parseListing(fx('listing-eben-ezer.html')).hours))
+  assert.ok(!isTemplateHours([null, ['07:30', '21:00'], ['07:30', '21:00'], ['07:30', '21:00'], ['07:30', '21:00'], ['07:30', '21:00'], ['08:00', '13:00']]))
+  assert.ok(!isTemplateHours(undefined))
+})

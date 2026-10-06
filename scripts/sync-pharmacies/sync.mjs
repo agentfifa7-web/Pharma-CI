@@ -20,7 +20,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { matchKey, parseCmuList, parseDirectoryPage, parseGardePage, parseListingPage, parsePriceList } from './parse.mjs'
+import { fixCategory, isHealthNews, isPharmacyListing, isTemplateHours, matchKey, parseCmuList, parseDirectoryPage, parseGardePage, parseListingPage, parsePriceList } from './parse.mjs'
 import { buildMedications, CMU_URL, PRICE_URL } from './medications.mjs'
 import { centerOf, CITIES, ABIDJAN_COMMUNES, strip, titleCase } from './communes.mjs'
 
@@ -34,6 +34,9 @@ const GARDE_URL = `${BASE}/liste-des-pharmacies-de-garde-en-cote-divoire/`
 const DIRECTORY_URL = `${BASE}/toutes-les-pharmacies-en-cote-divoire/`
 const UA = 'PHARMA-CI-sync/1.0 (+https://github.com/agentfifa7-web/pharma-ci)'
 const DELAY_MS = Number(process.env.SYNC_DELAY_MS ?? 600)
+// Temps maximal consacré aux fiches détaillées : au-delà, la synchronisation se termine proprement
+// avec ce qu'elle a (le cache est conservé) et le lancement suivant reprend là où elle s'est arrêtée.
+const DETAILS_BUDGET_MIN = Number(process.env.SYNC_DETAILS_BUDGET_MIN ?? 80)
 
 const args = new Set(process.argv.slice(2))
 const OFFLINE = args.has('--fixtures')
@@ -108,30 +111,43 @@ async function directoryFromHtml() {
   return out
 }
 
-/** Détails (GPS, adresse, horaires) — uniquement pour les fiches nouvelles ou modifiées. */
-async function withDetails(listings, cache) {
+/**
+ * Détails (GPS, adresse, horaires) — uniquement pour les fiches nouvelles ou modifiées.
+ * Les pharmacies passent en premier ; le cache est enregistré régulièrement (`save`) et le
+ * téléchargement s'arrête à `deadline` (les fiches restantes seront traitées au prochain lancement).
+ */
+async function withDetails(listings, cache, { deadline = Infinity, save } = {}) {
   let fetched = 0
-  for (const l of listings) {
+  let postponed = 0
+  const ordered = [...listings.filter(isPharmacy), ...listings.filter((l) => !isPharmacy(l))]
+  for (const l of ordered) {
     const c = cache[l.id]
     if (c && (c.modified === l.modified || (!l.modified && c.detail))) {
       l.detail = c.detail
       continue
     }
+    if (Date.now() > deadline) {
+      if (c?.detail) l.detail = c.detail // ancienne version, mieux que rien
+      postponed++
+      continue
+    }
     try {
       l.detail = parseListingPage((await get(l.link)).body)
+      cache[l.id] = { modified: l.modified, detail: l.detail } // échec : pas mis en cache, réessayé au prochain lancement
       fetched++
       if (fetched % 50 === 0) log(`fiches détaillées : ${fetched}`)
+      if (save && fetched % 100 === 0) await save()
     } catch (e) {
+      if (c?.detail) l.detail = c.detail
       log('fiche ignorée', l.link, e.message)
     }
-    cache[l.id] = { modified: l.modified, detail: l.detail }
     await sleep(DELAY_MS)
   }
-  log(`fiches détaillées téléchargées : ${fetched} (déjà en cache : ${listings.length - fetched})`)
+  log(`fiches détaillées téléchargées : ${fetched} · reportées au prochain lancement : ${postponed} · en cache : ${listings.length - fetched - postponed}`)
   return listings
 }
 
-const isPharmacy = (l) => /pharmac/i.test(l.category) || (!l.category && /^pharmacie\b/i.test(l.title))
+const isPharmacy = isPharmacyListing
 
 /** Ville/commune à partir des localisations de la fiche. */
 function placeOf(locations, extra = '') {
@@ -170,7 +186,7 @@ function toPharmacy({ id, name, note, phone, city, commune, quartier, position, 
     address: address ?? [quartier, commune !== city ? commune : undefined, city].filter(Boolean).join(', '),
     commune, city, region: REGION(city), position, positionApprox: approx || undefined,
     phone: phone || '',
-    hours: hours ?? DEFAULT_HOURS, hoursApprox: hours ? undefined : true,
+    hours: hours ?? DEFAULT_HOURS, hoursApprox: !hours || isTemplateHours(hours) ? true : undefined,
     services: note ? [note] : [],
     gardeGroup: -1,
     garde: period ? { start: period.start, end: period.end } : undefined,
@@ -243,8 +259,8 @@ function buildEstablishments(directory) {
     if (!position) continue
     out.push({
       id: `hp-${l.id}`,
-      kind: kindOf(l.category),
-      category: l.category || undefined,
+      kind: kindOf(fixCategory(l) || l.title),
+      category: fixCategory(l) || undefined,
       name: titleCase(l.title),
       commune: place.commune,
       city: place.city,
@@ -254,7 +270,7 @@ function buildEstablishments(directory) {
       phone: phoneOf(l.phone),
       services: l.category ? [l.category] : [],
       open24h: false,
-      hours: l.detail?.hours,
+      hours: isTemplateHours(l.detail?.hours) ? undefined : l.detail?.hours, // horaires modèle de la source : non significatifs
       sourceUrl: l.link,
     })
   }
@@ -263,21 +279,31 @@ function buildEstablishments(directory) {
 
 /* ---------- Actualités santé (articles WordPress) ---------- */
 
-const HEALTH = /pharmac|sant[ée]|m[ée]dic|garde|maladie|vaccin|paludisme|h[ôo]pital|clinique|soin|cmu|assurance|docteur|pharmacien|traitement|pr[ée]vention|ordre/i
 
 async function fetchNews() {
-  const { body } = await get(`${BASE}/wp-json/wp/v2/posts?per_page=50&_embed=wp:term,wp:featuredmedia`, { json: true })
-  return body
-    .map((p) => {
+  const out = []
+  for (let page = 1; page <= 5; page++) {
+    let res
+    try {
+      res = await get(`${BASE}/wp-json/wp/v2/posts?per_page=50&page=${page}&_embed=wp:term,wp:featuredmedia`, { json: true })
+    } catch (e) {
+      if (page === 1) throw e
+      break // au-delà de la dernière page, WordPress répond 400
+    }
+    for (const p of res.body) {
       const title = decode(p.title?.rendered)
       const excerpt = decode(p.excerpt?.rendered).replace(/\s*\[…\]$|\s*Lire la suite.*$/i, '')
       const cats = (p._embedded?.['wp:term'] ?? []).flat().filter((t) => t.taxonomy === 'category').map((t) => decode(t.name))
-      return {
+      const n = {
         id: `news-${p.id}`, title, excerpt, date: p.date_gmt ?? p.date, url: p.link, category: cats[0] ?? 'Santé',
         image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url,
       }
-    })
-    .filter((n) => HEALTH.test(`${n.title} ${n.excerpt}`))
+      if (isHealthNews(n)) out.push(n)
+    }
+    if (page >= Number(res.headers.get('x-wp-totalpages') ?? 1)) break
+    await sleep(DELAY_MS)
+  }
+  return out.slice(0, 40)
 }
 
 /* ---------- Programme principal ---------- */
@@ -301,6 +327,12 @@ async function step(label, fn) {
 async function main() {
   log(OFFLINE ? 'mode hors ligne (fixtures)' : `source : ${BASE}`)
   const cache = existsSync(CACHE) ? JSON.parse(await readFile(CACHE, 'utf8')) : {}
+  const saveCache = async () => {
+    if (OFFLINE) return
+    await mkdir(dirname(CACHE), { recursive: true })
+    await writeFile(CACHE, JSON.stringify(cache) + '\n')
+  }
+  const detailsDeadline = Date.now() + DETAILS_BUDGET_MIN * 60_000
 
   // 1. Pharmacies de garde (obligatoire)
   const garde = parseGardePage(OFFLINE ? await FIX('garde.html') : (await get(GARDE_URL)).body)
@@ -336,7 +368,16 @@ async function main() {
       (await step('annuaire via API', directoryFromApi)) ??
       (await step('annuaire via pages HTML', directoryFromHtml)) ??
       []
-    if (directory.length) await withDetails(directory, cache)
+    // L'API ne donne pas les téléphones : on les reprend des pages de l'annuaire (56 pages).
+    if (directory.length && !directory.some((l) => l.phone)) {
+      const pages = await step('téléphones (pages de l\'annuaire)', directoryFromHtml)
+      if (pages) {
+        const phoneByLink = new Map(pages.filter((p) => p.phone).map((p) => [p.link, p.phone]))
+        for (const l of directory) l.phone = phoneByLink.get(l.link) ?? ''
+        log(`téléphones : ${directory.filter((l) => l.phone).length} fiches`)
+      }
+    }
+    if (directory.length) await withDetails(directory, cache, { deadline: detailsDeadline, save: saveCache })
   }
 
   const previous = await readJson('pharmacies.json')
@@ -365,10 +406,7 @@ async function main() {
     })
   }
 
-  if (!OFFLINE) {
-    await mkdir(dirname(CACHE), { recursive: true })
-    await writeFile(CACHE, JSON.stringify(cache) + '\n')
-  }
+  await saveCache()
 }
 
 main().catch((e) => {

@@ -43,7 +43,11 @@ export default function PharmacyCard({ p, compact }: { p: PharmacyView; compact?
         </div>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <a href={`tel:${p.phone.replace(/\s/g, '')}`} className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-50 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100"><Phone size={15} />Appeler</a>
+        {p.phone ? (
+          <a href={`tel:${p.phone.replace(/\s/g, '')}`} className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-50 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100"><Phone size={15} />Appeler</a>
+        ) : (
+          <span title="Numéro non publié par la source" className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-50 py-2 text-xs font-semibold text-slate-400"><Phone size={15} />N° non publié</span>
+        )}
         <a href={pharmacyDirectionsUrl(p)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"><Navigation size={15} />Itinéraire</a>
         <button onClick={() => sharePharmacy(p)} className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"><Share2 size={15} />Partager</button>
       </div>

@@ -40,6 +40,14 @@ export function isOnGarde(p: Pharmacy, now = new Date()) {
 export type OpenInfo = { state: OpenState; label: string; detail: string }
 
 export function openInfo(p: Pharmacy, now = new Date()): OpenInfo {
+  const info = scheduleInfo(p, now)
+  // Horaires non propres à la pharmacie (modèle de la source) : on ne l'affirme pas ouverte/fermée.
+  if (!p.hoursApprox || info.label === 'De garde') return info
+  const label = info.state === 'open' ? 'Habituellement ouverte' : 'Habituellement fermée'
+  return { ...info, state: info.state === 'open' ? 'open' : 'soon', label, detail: `${info.detail} · horaires indicatifs` }
+}
+
+function scheduleInfo(p: Pharmacy, now: Date): OpenInfo {
   if (isOnGarde(p, now)) return { state: 'open', label: 'De garde', detail: p.garde ? `Garde jusqu'au ${new Date(p.garde.end).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}` : 'Ouverte 24h/24 cette semaine' }
   const day = now.getDay()
   const minutes = now.getHours() * 60 + now.getMinutes()
