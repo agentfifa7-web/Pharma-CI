@@ -22,7 +22,7 @@ export default function Alerts() {
           <p className="text-lg font-extrabold">Vérifiez vos boîtes 🔍</p>
           <p className="text-sm text-white/85">Retrouvez un produit par son code avec SCAN PHARMA. Un doute sur un médicament ? Signalez-le.</p>
         </div>
-        <ButtonLink to="/scan" className="bg-white text-red-600 hover:bg-red-50"><ScanLine size={16} />SCAN PHARMA</ButtonLink>
+        <ButtonLink to="/scan" variant="outline" className="!border-white !bg-white !text-red-600 hover:!bg-red-50"><ScanLine size={16} />SCAN PHARMA</ButtonLink>
       </div>
 
       {DRUG_ALERTS.length === 0 ? (

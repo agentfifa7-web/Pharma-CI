@@ -6,6 +6,7 @@ import { MEDICATIONS, MEDICATION_META } from '../../data/medications'
 import { searchMedications } from '../../data/assistant'
 import { dateFr, fcfa } from '../../lib/format'
 import { Button, Chips, EmptyState, Notice, PageHeader, cx } from '../../components/ui'
+import { FormIcon } from '../../components/FormIcon'
 
 type Filter = 'cmu' | 'hors_cmu' | 'tous'
 const PAGE = 50
@@ -98,7 +99,10 @@ export default function Cmu() {
               return (
                 <div key={m.id} className={cx('rounded-2xl border p-4', listed ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60')}>
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl leading-none">{listed ? '✅' : '⚠️'}</span>
+                    <div className="relative">
+                      <FormIcon m={m} />
+                      <span className="absolute -bottom-1 -right-1 text-sm leading-none">{listed ? '✅' : '⚠️'}</span>
+                    </div>
                     <div className="min-w-0 flex-1">
                       <Link to={`/medicaments/${m.id}`} className="font-bold hover:text-brand-700">{m.brand}</Link>
                       <p className="text-sm font-semibold text-slate-700">{listed ? 'Sur la liste CMU publiée' : 'Absent de la liste CMU publiée — à vérifier'}</p>
