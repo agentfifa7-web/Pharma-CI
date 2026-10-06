@@ -51,7 +51,7 @@ const AdminSecurity = lazy(() => import('./pages/admin/AdminSecurity'))
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <Suspense fallback={<div className="grid min-h-dvh place-items-center text-sm text-slate-400">Chargement…</div>}>
       <Routes>
         <Route element={<PatientLayout />}>
