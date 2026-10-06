@@ -36,12 +36,27 @@ jobs:
         run: node scripts/sync-pharmacies/sync.mjs ${{ inputs.garde_only && '--garde-only' || '' }}
       - name: Publication des données
         run: |
-          if git diff --quiet -- public/data scripts/sync-pharmacies/cache; then
+          if [ -z "$(git status --porcelain -- public/data scripts/sync-pharmacies)" ]; then
             echo "Aucun changement."
             exit 0
           fi
           git config user.name "pharma-ci-bot"
           git config user.email "pharma-ci-bot@users.noreply.github.com"
-          git add public/data scripts/sync-pharmacies/cache
+          git add public/data scripts/sync-pharmacies
           git commit -m "Données : synchronisation pharmacies-de-garde.ci ($(date -u +%F))"
-          git push
+          # main a pu avancer pendant la synchronisation (longue) : on se replace dessus avant de publier.
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((i * 10))
+          done
+          exit 1
+      - name: Sauvegarde des données (téléchargeable depuis le résumé du lancement)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: donnees-pharmacies
+          path: |
+            public/data
+            scripts/sync-pharmacies/cache
+          if-no-files-found: ignore
+          retention-days: 7
