@@ -19,7 +19,7 @@ npm run dev      # http://localhost:5173
 npm run build    # build de production dans dist/
 ```
 
-**En ligne** : https://agentfifa7-web.github.io/Pharma-CI/ (publiée par `.github/workflows/deploy-pages.yml`
+**En ligne** : https://www.pharma-ci.org (nom de domaine LWS, fichier `public/CNAME` ; publiée par `.github/workflows/deploy-pages.yml`
 à chaque mise à jour de `main` et après chaque synchronisation ; prérequis : *Settings → Pages → Source : GitHub Actions*).
 
 **Application mobile** : le site est installable sur téléphone et fonctionne hors connexion. Publication sur le
