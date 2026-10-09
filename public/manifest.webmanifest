@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "PHARMA CI — Pharmacies de Côte d'Ivoire",
+  "short_name": "PHARMA CI",
+  "description": "Pharmacies, pharmacies de garde, médicaments et ordonnances en Côte d'Ivoire.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#009E60",
+  "categories": ["medical", "health", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Pharmacies de garde", "url": "./garde", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Médicaments", "url": "./medicaments", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
