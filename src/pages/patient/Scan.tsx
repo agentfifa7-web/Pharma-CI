@@ -149,7 +149,7 @@ export default function Scan() {
 
         <Notice tone="blue" className="mt-4">
           <b>Aucune base officielle de lots n'est encore connectée.</b> SCAN PHARMA ne peut donc pas certifier l'authenticité d'un lot.
-          Vous pouvez en revanche retrouver un produit par son <b>code produit</b> (liste des prix publiée sur pharmacies-de-garde.ci).
+          Vous pouvez en revanche retrouver un produit par son <b>code produit</b> (liste publique des prix).
         </Notice>
       </Card>
 
@@ -182,7 +182,7 @@ export default function Scan() {
           <p className="mt-2 text-lg font-extrabold text-brand-800">Produit identifié</p>
           <p className="text-sm text-slate-700">
             Le code <b className="font-mono">{result.code}</b> correspond à <b>{result.med.brand}</b>
-            {result.med.therapeuticClass && <> ({result.med.therapeuticClass})</>} dans la liste des prix publiée par pharmacies-de-garde.ci.
+            {result.med.therapeuticClass && <> ({result.med.therapeuticClass})</>} dans la liste publique des prix.
           </p>
           <p className="mt-1 text-sm text-slate-700">
             Ce code identifie le produit, pas la boîte : il ne garantit pas son authenticité. Vérifiez l'emballage (aspect, date de péremption, numéro de lot) et achetez vos médicaments en pharmacie.

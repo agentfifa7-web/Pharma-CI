@@ -101,8 +101,8 @@ export default function AdminContent() {
           </div>
           <Panel title="Sources">
             <ul className="space-y-1 text-sm text-slate-600">
-              <li>Prix : <Src url={MEDICATION_META.prixUrl} label="Prix des médicaments en pharmacie — pharmacies-de-garde.ci" />{MEDICATION_META.prixUpdatedAt && <> · mise à jour du {dateFr(MEDICATION_META.prixUpdatedAt)}</>}</li>
-              <li>CMU : <Src url={MEDICATION_META.cmuUrl} label="Liste des médicaments pris en charge par la CMU — pharmacies-de-garde.ci" />{MEDICATION_META.cmuUpdatedAt && <> · mise à jour du {dateFr(MEDICATION_META.cmuUpdatedAt)}</>}</li>
+              <li>Prix : <Src url={MEDICATION_META.prixUrl} label="Prix des médicaments en pharmacie" />{MEDICATION_META.prixUpdatedAt && <> · mise à jour du {dateFr(MEDICATION_META.prixUpdatedAt)}</>}</li>
+              <li>CMU : <Src url={MEDICATION_META.cmuUrl} label="Liste des médicaments pris en charge par la CMU" />{MEDICATION_META.cmuUpdatedAt && <> · mise à jour du {dateFr(MEDICATION_META.cmuUpdatedAt)}</>}</li>
               {MEDICATION_META.generatedAt && <li>Dernière synchronisation : {dateFr(MEDICATION_META.generatedAt)}</li>}
             </ul>
           </Panel>
@@ -118,7 +118,7 @@ export default function AdminContent() {
           </div>
           <Panel title="Source de la liste CMU">
             <p className="text-sm text-slate-600">
-              Source actuelle : <Src url={MEDICATION_META.cmuUrl} label="Liste des médicaments pris en charge par la CMU — pharmacies-de-garde.ci" />
+              Source actuelle : <Src url={MEDICATION_META.cmuUrl} label="Liste des médicaments pris en charge par la CMU" />
               {MEDICATION_META.cmuUpdatedAt && <> — mise à jour du {dateFr(MEDICATION_META.cmuUpdatedAt)}</>}.
               Seule la liste officielle publiée par la CNAM / le ministère de la Santé fait foi.
             </p>
@@ -152,10 +152,10 @@ export default function AdminContent() {
 
       {tab === 'actualites' && (
         NEWS.length === 0 ? (
-          <EmptyState icon={<Newspaper />} title="Aucune actualité synchronisée" text="Les articles de pharmacies-de-garde.ci seront disponibles après la prochaine synchronisation." />
+          <EmptyState icon={<Newspaper />} title="Aucune actualité synchronisée" text="Les articles seront disponibles après la prochaine synchronisation." />
         ) : (
           <div className="space-y-3">
-            <p className="text-xs text-slate-500">{NEWS.length} article{NEWS.length > 1 ? 's' : ''} — source : pharmacies-de-garde.ci</p>
+            <p className="text-xs text-slate-500">{NEWS.length} article{NEWS.length > 1 ? 's' : ''} — source publique</p>
             <DataTable head={['Article', 'Catégorie', 'Date', 'Source']}>
               {[...NEWS].sort((a, b) => b.date.localeCompare(a.date)).map((n) => (
                 <tr key={n.id} className="hover:bg-slate-50">

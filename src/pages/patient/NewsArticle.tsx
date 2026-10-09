@@ -55,14 +55,14 @@ export default function NewsArticle() {
               rel="noreferrer"
               className="mt-5 inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-600"
             >
-              Lire l'article complet sur pharmacies-de-garde.ci<ExternalLink size={15} />
+              Lire l'article complet sur le site d'origine<ExternalLink size={15} />
             </a>
           )}
         </div>
       </article>
 
       <Notice tone="blue" className="mt-6">
-        Article publié par pharmacies-de-garde.ci. Information générale : elle ne remplace pas une consultation. En cas d'urgence, composez le <b>185</b> (SAMU).
+        Article issu d'une source publique. Information générale : elle ne remplace pas une consultation. En cas d'urgence, composez le <b>185</b> (SAMU).
       </Notice>
 
       {related.length > 0 && (

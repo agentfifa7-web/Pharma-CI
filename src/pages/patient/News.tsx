@@ -21,13 +21,13 @@ export default function News() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="PHARMA NEWS CI" subtitle="Actualités santé publiées sur pharmacies-de-garde.ci" icon={<Newspaper size={22} />} />
+      <PageHeader title="PHARMA NEWS CI" subtitle="Actualités santé" icon={<Newspaper size={22} />} />
 
       {NEWS.length === 0 ? (
         <EmptyState
           icon={<Newspaper />}
           title="Aucune actualité pour le moment"
-          text="Les actualités seront disponibles après la prochaine synchronisation avec pharmacies-de-garde.ci."
+          text="Les actualités seront disponibles après la prochaine synchronisation."
         />
       ) : (
         <>
@@ -70,8 +70,7 @@ export default function News() {
       )}
 
       <Notice tone="blue" className="mt-6">
-        Articles publiés par <a href="https://www.pharmacies-de-garde.ci" target="_blank" rel="noreferrer" className="font-semibold underline">pharmacies-de-garde.ci</a> :
-        PHARMA CI en affiche le titre et l'extrait, et renvoie vers l'article d'origine. Ces informations générales ne remplacent pas l'avis d'un professionnel de santé.
+        Articles issus de sources publiques : PHARMA CI en affiche le titre et l'extrait, et renvoie vers l'article d'origine. Ces informations générales ne remplacent pas l'avis d'un professionnel de santé.
       </Notice>
     </div>
   )

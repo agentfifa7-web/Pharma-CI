@@ -169,7 +169,7 @@ export default function HealthServices() {
       )}
 
       <Notice tone="blue" className="mt-5">
-        Annuaire issu des données publiques de <a href="https://www.pharmacies-de-garde.ci" target="_blank" rel="noreferrer" className="font-semibold underline">pharmacies-de-garde.ci</a>.
+        Annuaire issu de données publiques.
         Les positions marquées « approximatives » sont celles du centre de la commune. Vérifiez par téléphone avant de vous déplacer.
         En cas d'urgence vitale, composez le <b>185</b>.
       </Notice>

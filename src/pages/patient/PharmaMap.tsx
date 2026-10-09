@@ -155,7 +155,7 @@ export default function PharmaMap() {
       </div>
 
       <Notice tone="blue" className="mt-4">
-        Pharmacies et établissements : données publiques de pharmacies-de-garde.ci (les positions approximatives correspondent au centre de la commune).
+        Pharmacies et établissements : données publiques (les positions approximatives correspondent au centre de la commune).
         Pour la fluidité, la carte affiche au plus les {LIMIT.pharmacies} pharmacies et {LIMIT.places} établissements de chaque type les plus proches.
         Les agents affichés sont des comptes de test. Seules vos propres missions apparaissent sur la carte.
       </Notice>

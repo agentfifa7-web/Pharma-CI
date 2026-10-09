@@ -110,7 +110,7 @@ export default function Emergency() {
       </Section>
 
       <Notice tone="red" icon={<Siren size={16} />}>
-        PHARMA CI n'est pas un service d'urgence. Les établissements listés proviennent de l'annuaire public pharmacies-de-garde.ci. En cas de danger, appelez le <a href="tel:185" className="font-bold underline">185</a> sans attendre.
+        PHARMA CI n'est pas un service d'urgence. Les établissements listés proviennent d'annuaires publics. En cas de danger, appelez le <a href="tel:185" className="font-bold underline">185</a> sans attendre.
       </Notice>
     </div>
   )

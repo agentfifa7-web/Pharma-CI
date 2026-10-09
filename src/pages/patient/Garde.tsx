@@ -155,7 +155,7 @@ export default function Garde() {
 
       <Notice tone="orange" icon={<Info size={16} />}>
         <p>Le tour de garde change <strong>chaque semaine, du samedi au samedi</strong>. Les pharmacies de garde restent ouvertes jour et nuit pendant leur semaine.</p>
-        <p className="mt-1">Ces informations doivent être confirmées auprès des sources officielles (appel à la pharmacie, Ordre des pharmaciens). En production, elles sont synchronisées automatiquement depuis <strong>pharmacies-de-garde.ci</strong>.</p>
+        <p className="mt-1">Ces informations doivent être confirmées auprès des sources officielles (appel à la pharmacie, Ordre des pharmaciens). Elles sont synchronisées automatiquement depuis des sources publiques.</p>
       </Notice>
     </div>
   )

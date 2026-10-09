@@ -232,7 +232,7 @@ export default function MedicationDetail() {
       </div>
 
       <Notice tone="blue" icon={<FileText size={16} />} className="mt-2">
-        Informations issues des listes publiées sur pharmacies-de-garde.ci (prix, liste CMU). Elles ne remplacent ni la notice officielle du médicament, ni l'avis de votre pharmacien ou de votre médecin.
+        Informations issues de listes publiques (prix, liste CMU). Elles ne remplacent ni la notice officielle du médicament, ni l'avis de votre pharmacien ou de votre médecin.
       </Notice>
     </div>
   )
