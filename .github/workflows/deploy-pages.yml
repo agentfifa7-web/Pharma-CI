@@ -1,6 +1,6 @@
 name: Publication de l'application (GitHub Pages)
 
-# Construit l'application et la publie sur https://<compte>.github.io/<dépôt>/
+# Construit l'application et la publie sur GitHub Pages (nom de domaine de public/CNAME, sinon https://<compte>.github.io/<dépôt>/)
 # — à chaque push sur main, après chaque synchronisation des données, ou à la demande.
 # Prérequis (une fois) : Settings → Pages → Source : « GitHub Actions ».
 on:
@@ -36,8 +36,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Avec un nom de domaine personnalisé (fichier public/CNAME), le site est servi à la racine « / » ;
+      # sinon à l'adresse https://<compte>.github.io/<dépôt>/.
       - name: Build
-        run: npx tsc -b && npx vite build --base=/${{ github.event.repository.name }}/
+        run: |
+          if [ -s public/CNAME ]; then BASE=/; else BASE=/${{ github.event.repository.name }}/; fi
+          npx tsc -b && npx vite build --base="$BASE"
       - name: Routage SPA (liens directs)
         run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5
