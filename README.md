@@ -22,6 +22,9 @@ npm run build    # build de production dans dist/
 **En ligne** : https://www.pharma-ci.org (nom de domaine LWS, fichier `public/CNAME` ; publiée par `.github/workflows/deploy-pages.yml`
 à chaque mise à jour de `main` et après chaque synchronisation ; prérequis : *Settings → Pages → Source : GitHub Actions*).
 
+**Application mobile** : le site est installable sur téléphone et fonctionne hors connexion. Publication sur le
+Google Play Store : voir [docs/PLAY_STORE.md](docs/PLAY_STORE.md).
+
 L'application contient trois interfaces (sélecteur en haut à droite) :
 
 | Interface | URL | Rôle |
