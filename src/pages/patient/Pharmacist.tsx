@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  Check, CheckCircle2, ClipboardCopy, Info, MessageCircle, MessageSquare, NotebookPen, Phone, RotateCcw, Search, ShieldCheck, Siren, Trash2, UserRound,
+  BadgeCheck, Check, CheckCircle2, ClipboardCopy, Info, MessageCircle, MessageSquare, Mic, NotebookPen, Phone, RotateCcw, Search, ShieldCheck, Siren, Trash2, UserRound,
 } from 'lucide-react'
 import { usePharmacies, type PharmacyView } from '../../lib/usePharmacies'
 import { formatDistance } from '../../lib/geo'
@@ -11,15 +11,42 @@ import { RELATION_LABEL } from '../../data/statusUi'
 import { useStore } from '../../store/useStore'
 import { usePharmacistStore, type PharmacistExchange } from '../../store/usePharmacistStore'
 import {
-  CHANNEL_LABEL, TOPICS, buildMessage, channelsFor, contactHref, parsePhone, topicInfo, type ContactChannel, type QuestionTopic,
+  CHANNEL_LABEL, PARTNER, TOPICS, buildMessage, channelsFor, contactHref, parsePhone, topicInfo, type ContactChannel, type QuestionTopic,
 } from '../../lib/pharmacist'
 import { Badge, Card, Chips, EmptyState, Notice, OpenBadge, PageHeader, Section, Select, Textarea, cx } from '../../components/ui'
 
 type Filter = 'ouvertes' | 'garde' | 'favoris' | 'toutes'
 const PAGE = 8
 
+type Target = { id: string; name: string; phone: string }
+const opensWhatsapp = (c: ContactChannel) => c === 'whatsapp' || c === 'vocal'
+
+function PartnerCard({ onContact, compact }: { onContact: (p: Target, c: ContactChannel) => void; compact?: boolean }) {
+  return (
+    <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-4 text-white shadow-lg shadow-brand-500/20">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 font-bold"><BadgeCheck size={18} />{PARTNER.name}</p>
+          <p className="text-sm text-white/85">De garde pour répondre à vos questions · {PARTNER.phone}</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-xs font-bold">🟢 De garde</span>
+      </div>
+      {!compact && <p className="mt-2 text-sm text-white/85">Appelez-le, écrivez-lui ou envoyez-lui un message vocal sur WhatsApp. Votre question ci-dessus est ajoutée automatiquement au message écrit.</p>}
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {PARTNER.channels.map((c) => (
+          <button key={c} onClick={() => onContact(PARTNER, c)} className={cx('flex items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-semibold', c === 'whatsapp' ? 'bg-[#25D366] text-white hover:bg-[#1ebe5a]' : 'bg-white text-brand-700 hover:bg-brand-50')}>
+            {CHANNEL_STYLE[c].icon}{c === 'whatsapp' ? 'Écrire' : CHANNEL_LABEL[c]}
+          </button>
+        ))}
+      </div>
+      {!compact && <p className="mt-2 text-xs text-white/75">Message vocal : WhatsApp s'ouvre sur la conversation, maintenez le micro 🎤 pour parler.</p>}
+    </div>
+  )
+}
+
 const CHANNEL_STYLE: Record<ContactChannel, { icon: React.ReactNode; className: string }> = {
   whatsapp: { icon: <MessageCircle size={16} />, className: 'bg-[#25D366] text-white hover:bg-[#1ebe5a]' },
+  vocal: { icon: <Mic size={16} />, className: 'bg-white text-[#128C4B] ring-1 ring-[#25D366] hover:bg-emerald-50' },
   appel: { icon: <Phone size={16} />, className: 'bg-brand-500 text-white hover:bg-brand-600' },
   sms: { icon: <MessageSquare size={16} />, className: 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50' },
 }
@@ -46,7 +73,7 @@ function ExchangeItem({ e }: { e: PharmacistExchange }) {
   const remove = usePharmacistStore((s) => s.removeExchange)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(e.answer ?? '')
-  const channels = channelsFor(e.phone)
+  const channels = e.pharmacyId === PARTNER.id ? PARTNER.channels : channelsFor(e.phone)
   const again: ContactChannel = channels.includes(e.channel) ? e.channel : channels[0] ?? 'appel'
   return (
     <Card className={cx(e.resolved && 'opacity-75')}>
@@ -77,7 +104,7 @@ function ExchangeItem({ e }: { e: PharmacistExchange }) {
 
       <div className="mt-3 flex flex-wrap gap-2 text-sm font-semibold">
         {channels.length > 0 && (
-          <a href={contactHref(again, e.phone, e.message)} target={again === 'whatsapp' ? '_blank' : undefined} rel="noreferrer" className={cx('flex items-center gap-1.5 rounded-xl px-3 py-1.5', CHANNEL_STYLE[again].className)}>
+          <a href={contactHref(again, e.phone, e.message)} target={opensWhatsapp(again) ? '_blank' : undefined} rel="noreferrer" className={cx('flex items-center gap-1.5 rounded-xl px-3 py-1.5', CHANNEL_STYLE[again].className)}>
             {CHANNEL_STYLE[again].icon}Recontacter
           </a>
         )}
@@ -95,7 +122,7 @@ function ExchangeItem({ e }: { e: PharmacistExchange }) {
   )
 }
 
-function PharmacyRow({ p, pinned, onContact }: { p: PharmacyView; pinned?: boolean; onContact: (p: PharmacyView, c: ContactChannel) => void }) {
+function PharmacyRow({ p, pinned, onContact }: { p: PharmacyView; pinned?: boolean; onContact: (p: Target, c: ContactChannel) => void }) {
   const channels = channelsFor(p.phone)
   const phone = parsePhone(p.phone)
   return (
@@ -190,7 +217,7 @@ export default function Pharmacist() {
     }).sort((a, b) => Number(channelsFor(b.phone).length > 0) - Number(channelsFor(a.phone).length > 0) || a.km - b.km)
   }, [all, q, filter, favorites, pinnedId])
 
-  const contact = (p: PharmacyView, channel: ContactChannel) => {
+  const contact = (p: Target, channel: ContactChannel) => {
     const message = buildMessage({ pharmacyName: p.name, topic, forWhom, medication, question, withPrescriptionPhoto: withPhoto })
     addExchange({
       pharmacyId: p.id, pharmacyName: p.name, phone: p.phone, channel, topic,
@@ -198,7 +225,7 @@ export default function Pharmacist() {
     })
     setSent(p.name)
     const href = contactHref(channel, p.phone, message)
-    if (channel === 'whatsapp') window.open(href, '_blank', 'noopener')
+    if (opensWhatsapp(channel)) window.open(href, '_blank', 'noopener')
     else window.location.href = href
   }
 
@@ -219,6 +246,8 @@ export default function Pharmacist() {
       <Notice tone="red" icon={<Siren size={16} />} className="mb-5">
         <p><strong>Urgence ?</strong> Malaise, difficulté à respirer, saignement important, intoxication : n'écrivez pas, appelez le <a href="tel:185" className="font-bold underline">185 (SAMU)</a> ou le <a href="tel:180" className="font-bold underline">180 (pompiers)</a>. <Link to="/urgences" className="font-semibold underline">Page URGENCE</Link></p>
       </Notice>
+
+      <div className="mb-5"><PartnerCard onContact={contact} compact /></div>
 
       {pinned && (
         <p className="mb-4 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-800">
@@ -278,12 +307,14 @@ export default function Pharmacist() {
 
       {/* Étape 2 */}
       <div id="etape-2" className="scroll-mt-24" />
-      <Section title="2. Choisissez la pharmacie">
+      <Section title="2. Choisissez à qui parler">
         {sent && (
           <Notice tone="green" icon={<CheckCircle2 size={16} />} className="mb-3">
             Votre demande à <strong>{sent}</strong> a été ajoutée à <a href="#mes-echanges" className="font-semibold underline">Mes échanges</a>. Pensez à y noter la réponse du pharmacien.
           </Notice>
         )}
+        <div className="mb-3"><PartnerCard onContact={contact} /></div>
+        <p className="mb-2 text-sm font-semibold text-slate-600">Ou une pharmacie près de vous</p>
         {pinned && <div className="mb-3"><PharmacyRow p={pinned} pinned onContact={contact} /></div>}
         <div className="mb-3 space-y-2">
           <Chips<Filter>

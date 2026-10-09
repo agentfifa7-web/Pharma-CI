@@ -1,9 +1,20 @@
 // Module « Parler à un pharmacien » : mise en relation directe avec la pharmacie choisie
 // (WhatsApp, appel, SMS). Aucun serveur : le message part depuis le téléphone du patient.
 
-export type ContactChannel = 'whatsapp' | 'appel' | 'sms'
+export type ContactChannel = 'whatsapp' | 'vocal' | 'appel' | 'sms'
 
-export const CHANNEL_LABEL: Record<ContactChannel, string> = { whatsapp: 'WhatsApp', appel: 'Appel', sms: 'SMS' }
+export const CHANNEL_LABEL: Record<ContactChannel, string> = { whatsapp: 'WhatsApp', vocal: 'Message vocal', appel: 'Appel', sms: 'SMS' }
+
+/**
+ * Pharmacien partenaire de PHARMA CI, de garde pour échanger avec les utilisateurs.
+ * Toujours proposé en premier dans « Parler à un pharmacien ».
+ */
+export const PARTNER = {
+  id: 'partenaire',
+  name: 'Pharmacien partenaire PHARMA CI',
+  phone: '+225 05 04 15 19 49',
+  channels: ['whatsapp', 'vocal', 'appel', 'sms'] as ContactChannel[],
+}
 
 export type QuestionTopic = 'conseil' | 'disponibilite' | 'prix' | 'ordonnance' | 'effet' | 'petit_mal' | 'autre'
 
@@ -37,10 +48,13 @@ export function parsePhone(raw: string) {
 
 export const telHref = (phone: string) => `tel:${parsePhone(phone).tel}`
 export const whatsappHref = (phone: string, text: string) => `https://wa.me/${parsePhone(phone).intl}?text=${encodeURIComponent(text)}`
+/** Ouvre la conversation WhatsApp sans texte : il suffit d'enregistrer un message vocal. */
+export const whatsappChatHref = (phone: string) => `https://wa.me/${parsePhone(phone).intl}`
 export const smsHref = (phone: string, text: string) => `sms:${parsePhone(phone).tel}?body=${encodeURIComponent(text)}`
 
 export function contactHref(channel: ContactChannel, phone: string, text: string) {
   if (channel === 'whatsapp') return whatsappHref(phone, text)
+  if (channel === 'vocal') return whatsappChatHref(phone)
   if (channel === 'sms') return smsHref(phone, text)
   return telHref(phone)
 }
