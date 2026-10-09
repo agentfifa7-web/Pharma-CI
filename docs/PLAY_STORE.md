@@ -15,7 +15,7 @@ Ce qui est déjà prêt dans le dépôt :
 
 ## Étape 0 — Avant de commencer
 
-Le site doit être en ligne **sur votre nom de domaine LWS, en https** (`https://pharma-ci.org`, ou `https://www.pharma-ci.org` selon le réglage choisi chez LWS).
+Le site doit être en ligne **sur votre nom de domaine LWS, en https** : `https://www.pharma-ci.org`.
 L'adresse `agentfifa7-web.github.io/Pharma-CI` ne convient pas pour le Play Store : Android a besoin d'un fichier
 de vérification à la racine du domaine, ce qui n'est possible qu'avec votre propre domaine.
 
@@ -62,7 +62,7 @@ C'est ce fichier qui fait disparaître la barre d'adresse dans l'application.
    Copiez l'**empreinte SHA-256** du « certificat de la clé de signature d'application ».
 2. Envoyez à Claude, dans le projet : le fichier `assetlinks.json` de PWABuilder **et** cette empreinte SHA-256.
 3. Claude ajoutera le fichier dans `public/.well-known/assetlinks.json` (les deux empreintes) par une demande de fusion.
-   Vous la fusionnerez, et le fichier sera en ligne à l'adresse `https://pharma-ci.org/.well-known/assetlinks.json`.
+   Vous la fusionnerez, et le fichier sera en ligne à l'adresse `https://www.pharma-ci.org/.well-known/assetlinks.json`.
 
 ## Étape 5 — Remplir la fiche Play Store (vous)
 
@@ -97,7 +97,7 @@ d'un pharmacien ou d'un médecin. En cas d'urgence, appelez le 185 (SAMU).
 
 Menu **Contenu de l'application** (questionnaires obligatoires) :
 
-- **Règles de confidentialité** : `https://pharma-ci.org/confidentialite.html`
+- **Règles de confidentialité** : `https://www.pharma-ci.org/confidentialite.html`
   (complétez d'abord l'e-mail de contact dans `public/confidentialite.html`).
 - **Annonces** : Non, l'application ne contient pas d'annonces.
 - **Accès à l'application** : Toutes les fonctionnalités sont disponibles sans restriction (pas de compte).
