@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { AlertTriangle, Bot, ChevronRight, ExternalLink, FileText, MapPin, Pill, ShieldCheck, Tag } from 'lucide-react'
+import { AlertTriangle, Bot, ChevronRight, ExternalLink, FileText, MapPin, MessageCircle, Pill, ShieldCheck, Tag } from 'lucide-react'
 import type { Medication } from '../../types'
 import { medById, medShortName } from '../../data/medications'
 import { DRUG_ALERTS } from '../../data/alerts'
@@ -96,6 +96,7 @@ export default function MedicationDetail() {
           <ButtonLink to="/pharmacies" variant="accent"><MapPin size={16} />Trouver une pharmacie</ButtonLink>
           <ButtonLink to={`/vigilance?med=${m.id}`} variant="ghost" className="!bg-white/15 !text-white hover:!bg-white/25"><AlertTriangle size={16} />Signaler un effet</ButtonLink>
           <ButtonLink to={`/assistant?q=${encodeURIComponent(`${medShortName(m)} CMU et prix`)}`} variant="outline" className="!border-white !bg-white !text-brand-700 hover:!bg-brand-50"><Bot size={16} />Demander à PHARMA AI</ButtonLink>
+          <ButtonLink to={`/pharmacien?medicament=${m.id}`} variant="outline" className="!border-white !bg-white !text-brand-700 hover:!bg-brand-50"><MessageCircle size={16} />Demander à un pharmacien</ButtonLink>
         </div>
       </div>
 

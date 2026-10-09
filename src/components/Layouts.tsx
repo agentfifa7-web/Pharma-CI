@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   AlertTriangle, BarChart3, Bell, Bike, BookOpen, Bot, Building2, Camera, ChevronDown, ClipboardList, FileText, Home, LayoutDashboard,
-  Lock, Map, MapPin, Menu, Newspaper, Pill, ScanLine, Shield, ShieldAlert, Siren, Stethoscope, Truck, User, Users, X,
+  Lock, Map, MapPin, Menu, MessageCircle, Newspaper, Pill, ScanLine, Shield, ShieldAlert, Siren, Stethoscope, Truck, User, Users, X,
 } from 'lucide-react'
 import { useActiveProfile, useStore } from '../store/useStore'
 import { DemoBanner, cx } from './ui'
@@ -31,6 +31,7 @@ const PATIENT_NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: '/', label: 'Accueil', icon: <Home size={18} />, end: true },
       { to: '/ordonnance', label: 'Envoyer une ordonnance', icon: <Camera size={18} /> },
+      { to: '/pharmacien', label: 'Parler à un pharmacien', icon: <MessageCircle size={18} /> },
       { to: '/missions', label: 'Suivre ma commande', icon: <Truck size={18} /> },
       { to: '/traitements', label: 'Mes médicaments', icon: <Pill size={18} /> },
     ],

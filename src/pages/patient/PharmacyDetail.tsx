@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  BadgeCheck, Clock, Database, Heart, Info, MapPin, Navigation, Phone, Share2, ShieldCheck, ShieldQuestion, ShoppingBag, Siren, Store, Truck,
+  BadgeCheck, Clock, Database, Heart, Info, MapPin, MessageCircle, Navigation, Phone, Share2, ShieldCheck, ShieldQuestion, ShoppingBag, Siren, Store, Truck,
 } from 'lucide-react'
 import { usePharmacies } from '../../lib/usePharmacies'
 import { DAYS, formatHours, gardePeriod } from '../../lib/hours'
@@ -73,6 +73,11 @@ export default function PharmacyDetail() {
           <Heart size={20} className={fav ? 'fill-red-500' : ''} />{fav ? 'Favori' : 'Ajouter'}
         </button>
       </div>
+      {p.phone && (
+        <Link to={`/pharmacien?pharmacie=${p.id}`} className="-mt-2 mb-5 flex items-center justify-center gap-2 rounded-2xl bg-brand-50 py-3 text-sm font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100">
+          <MessageCircle size={18} />Parler au pharmacien de cette pharmacie
+        </Link>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <div>

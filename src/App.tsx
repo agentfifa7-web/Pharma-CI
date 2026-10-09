@@ -25,6 +25,7 @@ const Alerts = lazy(() => import('./pages/patient/Alerts'))
 const Vigilance = lazy(() => import('./pages/patient/Vigilance'))
 const Scan = lazy(() => import('./pages/patient/Scan'))
 const Assistant = lazy(() => import('./pages/patient/Assistant'))
+const Pharmacist = lazy(() => import('./pages/patient/Pharmacist'))
 const Legal = lazy(() => import('./pages/patient/Legal'))
 const Ordre = lazy(() => import('./pages/patient/Ordre'))
 const HealthServices = lazy(() => import('./pages/patient/HealthServices'))
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="vigilance" element={<Vigilance />} />
           <Route path="scan" element={<Scan />} />
           <Route path="assistant" element={<Assistant />} />
+          <Route path="pharmacien" element={<Pharmacist />} />
           <Route path="reglementation" element={<Legal />} />
           <Route path="ordre" element={<Ordre />} />
           <Route path="sante" element={<HealthServices />} />
