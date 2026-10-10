@@ -27,7 +27,7 @@ export const otpCode = () => Array.from(crypto.getRandomValues(new Uint8Array(4)
 export const uid = (prefix = '') => prefix + randomCode(8)
 
 /** Réduit une image en data URL JPEG pour l'aperçu et le stockage local. */
-export async function imagePreview(file: File, max = 900): Promise<string | undefined> {
+export async function imagePreview(file: File, max = 900, quality = 0.72): Promise<string | undefined> {
   if (!file.type.startsWith('image/')) return undefined
   const url = URL.createObjectURL(file)
   try {
@@ -42,7 +42,7 @@ export async function imagePreview(file: File, max = 900): Promise<string | unde
     c.width = Math.round(img.width * scale)
     c.height = Math.round(img.height * scale)
     c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height)
-    return c.toDataURL('image/jpeg', 0.72)
+    return c.toDataURL('image/jpeg', quality)
   } finally {
     URL.revokeObjectURL(url)
   }

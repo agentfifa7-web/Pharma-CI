@@ -37,6 +37,22 @@ Le service de PHARMA CI (`https://ordonnance-ia.agentfifa7.workers.dev`) est dé
 
 Après la publication, la page « Envoyer une ordonnance » lit les ordonnances par IA.
 
+## Mettre à jour le service
+Quand `worker.js` change dans ce dépôt, il faut recoller le code chez Cloudflare (la clé, elle, est conservée) :
+**Workers & Pages** → `ordonnance-ia` → **Edit code** → tout effacer → coller le nouveau `worker.js` → **Deploy**.
+L'adresse du service affiche alors le numéro de version (`"version":2`).
+
+## Diagnostic
+Ouvrir `https://ordonnance-ia.agentfifa7.workers.dev/?diagnostic` : pour chaque modèle Gemini, la page indique s'il
+répond avec la clé (`"status":200`), en combien de millisecondes, ou l'erreur rencontrée (clé refusée, quota atteint…).
+
+## Robustesse
+- Chaque essai auprès de Gemini est limité à 25 s, et la lecture complète à 55 s.
+- Si un modèle est saturé (429/503), trop lent ou renvoie une réponse illisible, le modèle suivant est essayé
+  (`gemini-flash-latest`, `gemini-2.5-flash`, `gemini-flash-lite-latest`, `gemini-2.5-flash-lite`).
+- Côté site, l'attente est limitée à 70 s, avec une nouvelle tentative en cas de coupure réseau. En cas d'échec,
+  un message clair s'affiche avec les boutons « Relancer la lecture » et « Reprendre la photo ».
+
 ## Bon à savoir
 - **Coût** : l'offre gratuite de Gemini et celle de Cloudflare suffisent pour démarrer (limites de quelques
   centaines de lectures par jour, susceptibles d'évoluer : voir la console Google AI Studio).
@@ -47,4 +63,3 @@ Après la publication, la page « Envoyer une ordonnance » lit les ordonnances 
 - **Qualité** : une photo nette, de face, bien éclairée et en taille originale (pas une miniature WhatsApp) donne
   le meilleur résultat. Le patient vérifie toujours chaque ligne avant de confirmer.
 - Le modèle utilisé peut être changé avec la variable `GEMINI_MODEL` (par défaut `gemini-flash-latest`).
-- Si le service ne répond pas (quota atteint, coupure), le site repasse automatiquement à la lecture Tesseract.

@@ -101,7 +101,8 @@ export default function PrescriptionUpload() {
       extracted = res.lines
       setEngine(res.engine)
       setOcrText(res.text.trim())
-      if (res.unsupported.length && res.unsupported.length === raw.length)
+      if (res.error) note = res.error
+      else if (res.unsupported.length && res.unsupported.length === raw.length)
         note = 'La lecture automatique des PDF n\'est pas encore prise en charge : saisissez les lignes de l\'ordonnance ci-dessous (ou envoyez une photo).'
       else if (!extracted.length)
         note = 'Aucune ligne de médicament n\'a pu être lue automatiquement. Reprenez une photo nette, de face et bien éclairée, ou saisissez les lignes telles qu\'écrites sur l\'ordonnance.'
@@ -126,6 +127,24 @@ export default function PrescriptionUpload() {
       setLines([{ id: uid('ln-'), label: '', dosage: '', quantity: 1 }])
       setPhase('review')
     }
+  }
+
+  /** Relance la lecture automatique sur les mêmes documents (après un échec ou une lecture incomplète). */
+  const rerun = async () => {
+    if (!created || !files.length) return
+    setOcrNote('')
+    setProgress({ p: 0, status: 'Préparation des photos' })
+    setPhase('ocr')
+    const res = await readPrescription(files.map((f) => f.file), (p, status) => setProgress({ p, status }))
+    setEngine(res.engine)
+    setOcrText(res.text.trim())
+    if (res.lines.length) {
+      setLines(res.lines)
+      setPhase('detected')
+      return
+    }
+    setOcrNote(res.error ?? "Aucune ligne de médicament n'a pu être lue. Reprenez une photo nette, de face et bien éclairée, ou saisissez les lignes.")
+    setPhase('review')
   }
 
   const restart = () => {
@@ -300,7 +319,17 @@ export default function PrescriptionUpload() {
           <Notice tone="orange" icon={<Sparkles size={16} />} className="mb-4">
             <b>{engine === 'ia' ? 'Lecture automatique par IA' : 'Lecture automatique (OCR)'} : vérifiez chaque ligne</b> ; l'IA ne modifie pas la prescription.
           </Notice>
-          {ocrNote && <Notice tone="blue" icon={<AlertTriangle size={16} />} className="mb-4">{ocrNote}</Notice>}
+          {ocrNote && (
+            <Notice tone="blue" icon={<AlertTriangle size={16} />} className="mb-4">
+              {ocrNote}
+              {engine === 'ia' && phase === 'review' && (
+                <span className="mt-2 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => void rerun()}><ScanLine size={14} /> Relancer la lecture</Button>
+                  <Button size="sm" variant="outline" onClick={restart}><Camera size={14} /> Reprendre la photo</Button>
+                </span>
+              )}
+            </Notice>
+          )}
         </>
       )}
 

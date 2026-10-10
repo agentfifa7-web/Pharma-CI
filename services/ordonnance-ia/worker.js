@@ -9,7 +9,7 @@
  *
  * Variables (Cloudflare → Worker → Settings → Variables and Secrets) :
  *  - GEMINI_API_KEY   (secret, obligatoire) clé créée sur https://aistudio.google.com/apikey
- *  - GEMINI_MODEL     (facultatif) modèle Gemini, par défaut « gemini-flash-latest »
+ *  - GEMINI_MODEL     (facultatif) modèle Gemini essayé en premier (sinon gemini-flash-latest)
  *  - ALLOWED_ORIGINS  (facultatif) origines autorisées, séparées par des virgules
  *
  * Requête : POST JSON { files: [{ mimeType: "image/jpeg" | "application/pdf" | …, data: "<base64>" }] }
@@ -17,13 +17,22 @@
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
+const VERSION = 2
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
+// Modèles essayés dans l'ordre : si l'un est saturé (429/503), trop lent ou indisponible, on passe au suivant.
+const FALLBACK_MODELS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite']
+const ATTEMPT_TIMEOUT_MS = 25_000 // durée maximale d'un essai
+const TOTAL_BUDGET_MS = 55_000 // durée maximale de la lecture complète (le site abandonne à 70 s)
 
 const PROMPT = `Tu es un assistant de pharmacie en Côte d'Ivoire. On te montre la photo d'une ordonnance médicale
 (souvent manuscrite, parfois floue, de travers ou mal éclairée). Relève UNIQUEMENT les médicaments prescrits,
 dans l'ordre où ils apparaissent.
+
+Abréviations courantes : cp = comprimé, gél = gélule, sp/sir = sirop, sach = sachet, inj = injectable, supp = suppositoire,
+amp = ampoule, gttes = gouttes, bte = boîte, fl = flacon, QSP = quantité suffisante pour, « x 3/j » = trois fois par jour,
+« pdt 5j » = pendant 5 jours, « 01 bte » = une boîte. Les lignes sont souvent numérotées (1/, 2/, ①…).
 
 Pour chaque médicament :
 - texte : la ligne telle qu'elle est écrite (nom, dosage, forme), sans la posologie, en recopiant fidèlement.
@@ -78,7 +87,15 @@ export default {
     const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8' } })
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
-    if (request.method === 'GET') return json({ ok: true, service: 'PHARMA CI — lecture des ordonnances', configured: !!env.GEMINI_API_KEY })
+    if (request.method === 'GET') {
+      const info = { ok: true, service: 'PHARMA CI — lecture des ordonnances', version: VERSION, configured: !!env.GEMINI_API_KEY }
+      // https://…workers.dev/?diagnostic : vérifie la clé et la disponibilité de chaque modèle (petite question texte).
+      if (new URL(request.url).searchParams.has('diagnostic') && env.GEMINI_API_KEY) {
+        const models = [...new Set([env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean))]
+        info.models = await Promise.all(models.map((m) => ping(env.GEMINI_API_KEY, m)))
+      }
+      return json(info)
+    }
     if (request.method !== 'POST') return json({ error: 'Méthode non autorisée' }, 405)
     if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
     if (!env.GEMINI_API_KEY) return json({ error: 'Clé GEMINI_API_KEY absente' }, 500)
@@ -97,26 +114,98 @@ export default {
     }
     if (total > MAX_BYTES) return json({ error: 'Fichiers trop volumineux' }, 413)
 
-    const model = env.GEMINI_MODEL || 'gemini-flash-latest'
+    const models = [...new Set([env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean))]
+    const result = await readWithGemini(env.GEMINI_API_KEY, models, files)
+    if (result.lines) return json({ lines: result.lines, model: result.model, attempts: result.attempts })
+    return json({ error: result.error, attempts: result.attempts }, result.status ?? 502)
+  },
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/** Extrait l'objet JSON de la réponse du modèle (tolère un texte autour ou des balises ```json). */
+function parseLines(text) {
+  const tries = [text, text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)]
+  for (const t of tries) {
+    try {
+      const parsed = JSON.parse(t)
+      if (Array.isArray(parsed?.lines)) return parsed.lines
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // essai suivant
+    }
+  }
+  return null
+}
+
+/**
+ * Interroge Gemini avec reprise automatique : chaque essai est limité dans le temps, et en cas de saturation
+ * (429, 500, 503), de délai dépassé ou de réponse illisible, le modèle suivant de la liste est essayé.
+ */
+async function readWithGemini(apiKey, models, files) {
+  const started = Date.now()
+  const attempts = []
+  const parts = [...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: PROMPT }]
+  let lastError = 'Service de lecture indisponible'
+
+  for (const model of models) {
+    // Premier essai avec une réflexion du modèle limitée (plus rapide et plus régulier) ; sans ce réglage si le modèle le refuse.
+    for (const fast of [true, false]) {
+      const left = TOTAL_BUDGET_MS - (Date.now() - started)
+      if (left < 4_000) return { error: 'La lecture a pris trop de temps', status: 504, attempts }
+      const generationConfig = { temperature: 0, responseMimeType: 'application/json', responseSchema: SCHEMA, maxOutputTokens: 4096 }
+      if (fast) generationConfig.thinkingConfig = { thinkingBudget: 1024 }
+      const t0 = Date.now()
+      let res
+      try {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig }),
+          signal: AbortSignal.timeout(Math.min(ATTEMPT_TIMEOUT_MS, left)),
+        })
+      } catch (e) {
+        attempts.push({ model, fast, ms: Date.now() - t0, error: e?.name === 'TimeoutError' ? 'délai dépassé' : 'réseau' })
+        lastError = 'Le service de lecture ne répond pas'
+        break // modèle suivant
+      }
+      const entry = { model, fast, ms: Date.now() - t0, status: res.status }
+      attempts.push(entry)
+      if (res.ok) {
+        const data = await res.json().catch(() => null)
+        const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
+        const lines = parseLines(text)
+        if (lines) return { lines, model, attempts }
+        entry.error = `réponse illisible (${data?.candidates?.[0]?.finishReason ?? 'vide'})`
+        lastError = 'Réponse illisible du service de lecture'
+        break
+      }
+      const detail = (await res.text().catch(() => '')).slice(0, 200)
+      entry.error = detail
+      if (res.status === 400 && fast && /think/i.test(detail)) continue // réessayer ce modèle sans le réglage « rapide »
+      if (res.status === 401 || res.status === 403) return { error: 'Clé GEMINI_API_KEY refusée par Google', status: 502, attempts }
+      if (res.status === 429) lastError = 'Quota de lecture atteint, réessayez dans une minute'
+      else if (res.status === 404) lastError = 'Modèle de lecture introuvable'
+      else lastError = `Service de lecture indisponible (${res.status})`
+      if (res.status === 429 || res.status >= 500) await sleep(800)
+      break // modèle suivant
+    }
+  }
+  return { error: lastError, status: 502, attempts }
+}
+
+/** Petite requête texte pour vérifier qu'un modèle répond avec cette clé (diagnostic). */
+async function ping(apiKey, model) {
+  const t0 = Date.now()
+  try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: PROMPT }] }],
-        generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: SCHEMA },
-      }),
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Réponds seulement : OK' }] }], generationConfig: { maxOutputTokens: 20 } }),
+      signal: AbortSignal.timeout(15_000),
     })
-    if (!res.ok) {
-      const detail = (await res.text()).slice(0, 300)
-      return json({ error: `Service de lecture indisponible (${res.status})`, detail }, 502)
-    }
-    const data = await res.json()
-    const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
-    try {
-      const parsed = JSON.parse(text)
-      return json({ lines: Array.isArray(parsed.lines) ? parsed.lines : [], model })
-    } catch {
-      return json({ error: 'Réponse illisible du modèle' }, 502)
-    }
-  },
+    return { model, status: res.status, ms: Date.now() - t0, ...(res.ok ? {} : { error: (await res.text()).slice(0, 160) }) }
+  } catch (e) {
+    return { model, ms: Date.now() - t0, error: e?.name === 'TimeoutError' ? 'délai dépassé' : 'réseau' }
+  }
 }
