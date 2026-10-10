@@ -4,6 +4,9 @@ import 'leaflet/dist/leaflet.css'
 import './index.css'
 import App from './App.tsx'
 import { loadAllData } from './services/pharmacyProvider'
+import { captureInstallPrompt } from './lib/install'
+
+captureInstallPrompt()
 
 // L'annuaire synchronisé est chargé avant le premier rendu (toutes les données proviennent des fichiers synchronisés).
 void loadAllData().finally(() =>

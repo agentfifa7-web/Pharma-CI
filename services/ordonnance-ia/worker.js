@@ -12,6 +12,7 @@
  *  - GEMINI_MODEL     (facultatif) modèle Gemini essayé en premier (sinon gemini-flash-latest)
  *  - ALLOWED_ORIGINS  (facultatif) origines autorisées, séparées par des virgules
  *  - AGENT_CODE       (secret, pour les missions) code d'accès remis aux agents de livraison
+ *  - ADMIN_CODE       (secret) code de l'administratrice : ouvre l'espace Admin du site (et vaut aussi code agent)
  *  - DB               (liaison D1, pour les missions) base de données partagée entre patients et agents
  *
  * Requête : POST JSON { files: [{ mimeType: "image/jpeg" | "application/pdf" | …, data: "<base64>" }] }
@@ -21,7 +22,7 @@
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 8
+const VERSION = 9
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
@@ -100,7 +101,7 @@ export default {
     const cors = {
       'Access-Control-Allow-Origin': allowed ? origin : DEFAULT_ORIGINS[0],
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Agent-Code, X-Mission-Token',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Agent-Code, X-Admin-Code, X-Mission-Token',
       'Access-Control-Max-Age': '86400',
       Vary: 'Origin',
     }
@@ -110,6 +111,13 @@ export default {
     const url = new URL(request.url)
     // « //missions » (adresse du service saisie avec un « / » final) est traité comme « /missions ».
     url.pathname = url.pathname.replace(/\/{2,}/g, '/')
+    // Vérification du code de l'administratrice : seul ce code ouvre l'espace Admin du site.
+    if (url.pathname === '/admin-check') {
+      if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
+      if (!env.ADMIN_CODE) return json({ error: "Le code administrateur n'est pas encore configuré (secret ADMIN_CODE chez Cloudflare)." }, 503)
+      if ((request.headers.get('X-Admin-Code') ?? '') !== env.ADMIN_CODE) return json({ error: 'Code administrateur incorrect' }, 401)
+      return json({ admin: true })
+    }
     if (url.pathname.startsWith('/missions') || url.pathname.startsWith('/agents')) {
       if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
       try {
@@ -119,7 +127,7 @@ export default {
       }
     }
     if (request.method === 'GET') {
-      const info = { ok: true, service: 'PHARMA CI — lecture des ordonnances', version: VERSION, configured: !!env.GEMINI_API_KEY, missions: !!env.DB, agentCode: !!env.AGENT_CODE }
+      const info = { ok: true, service: 'PHARMA CI — lecture des ordonnances', version: VERSION, configured: !!env.GEMINI_API_KEY, missions: !!env.DB, agentCode: !!env.AGENT_CODE, adminCode: !!env.ADMIN_CODE }
       // https://…workers.dev/?diagnostic : vérifie la clé et la disponibilité de chaque modèle (petite question texte).
       if (url.searchParams.has('diagnostic') && env.GEMINI_API_KEY) {
         const specs = [...plan(env), ...DIAGNOSTIC_EXTRA.filter((d) => !plan(env).some((p) => p.model === d.model))]
@@ -358,12 +366,17 @@ function view(row, forPatient) {
   return m
 }
 
+/** Code agent valide : celui des agents (AGENT_CODE) ou celui de l'administratrice (ADMIN_CODE). */
+function hasAgentCode(request, env) {
+  const code = request.headers.get('X-Agent-Code') ?? ''
+  return !!code && (code === env.AGENT_CODE || code === env.ADMIN_CODE)
+}
+
 async function handleMissions(request, env, url, json) {
   if (!env.DB) return json({ error: "La base de données des missions n'est pas encore activée (liaison D1 « DB »)." }, 503)
   await ensureSchema(env.DB)
   const id = decodeURIComponent(url.pathname.split('/')[2] ?? '')
-  const agentCode = request.headers.get('X-Agent-Code') ?? ''
-  const isAgent = !!env.AGENT_CODE && agentCode === env.AGENT_CODE
+  const isAgent = hasAgentCode(request, env)
   const token = request.headers.get('X-Mission-Token') ?? ''
 
   if (request.method === 'GET' && !id) {
@@ -434,7 +447,7 @@ const AGENT_FIELDS = ['name', 'phone', 'zone', 'vehicle', 'available', 'position
 async function handleAgents(request, env, url, json) {
   if (!env.DB) return json({ error: "La base de données n'est pas encore activée (liaison D1 « DB »)." }, 503)
   if (!env.AGENT_CODE) return json({ error: "Le code des agents n'est pas encore configuré (secret AGENT_CODE)." }, 503)
-  if ((request.headers.get('X-Agent-Code') ?? '') !== env.AGENT_CODE) return json({ error: 'Code agent incorrect' }, 401)
+  if (!hasAgentCode(request, env)) return json({ error: 'Code agent incorrect' }, 401)
   await ensureSchema(env.DB)
   const id = decodeURIComponent(url.pathname.split('/')[2] ?? '')
 

@@ -12,6 +12,7 @@ import { downloadText } from '../../data/statusUi'
 
 export default function Profile() {
   const user = useStore((s) => s.user)
+  const isAdmin = useStore((s) => !!s.adminCode)
   const setUser = useStore((s) => s.setUser)
   const profiles = useStore((s) => s.profiles)
   const updateProfile = useStore((s) => s.updateProfile)
@@ -153,10 +154,11 @@ export default function Profile() {
         </Card>
       </Section>
 
-      <Section title="Accès démo">
+      <Section title="Applications PHARMA CI">
         <div className="grid gap-2 sm:grid-cols-2">
-          <LinkRow to="/agent" icon={<Bike size={18} />} title="App PHARMA CI AGENT" sub="Comptes agents de test" />
-          <LinkRow to="/admin" icon={<LayoutDashboard size={18} />} title="Console Admin" sub="Supervision, anti-fraude" />
+          <LinkRow to="/installer" icon={<Download size={18} />} title="Télécharger l'application" sub="Sur l'écran d'accueil, avec QR code" />
+          <LinkRow to="/agent" icon={<Bike size={18} />} title="App PHARMA CI AGENT" sub="Pour les agents de livraison" />
+          {isAdmin && <LinkRow to="/admin" icon={<LayoutDashboard size={18} />} title="Console Admin" sub="Supervision, anti-fraude" />}
         </div>
       </Section>
     </div>

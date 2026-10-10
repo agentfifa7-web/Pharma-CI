@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AlertTriangle, BarChart3, Bell, Bike, BookOpen, Bot, Building2, Camera, ChevronDown, ClipboardList, FileText, Home, LayoutDashboard,
-  Lock, Map, MapPin, Menu, MessageCircle, Newspaper, Pill, ScanLine, Shield, ShieldAlert, Siren, Stethoscope, Truck, User, Users, X,
+  AlertTriangle, BarChart3, Bell, Bike, BookOpen, Bot, Building2, Camera, ChevronDown, ClipboardList, Download, FileText, Home, LayoutDashboard,
+  Lock, LogOut, Map, MapPin, Menu, MessageCircle, Newspaper, Pill, ScanLine, Shield, ShieldAlert, Siren, Stethoscope, Truck, User, Users, X,
 } from 'lucide-react'
 import { useActiveProfile, useStore } from '../store/useStore'
 import { DemoBanner, cx } from './ui'
 import Simulation from './Simulation'
+import InstallBanner from './InstallBanner'
+import AdminGate from './AdminGate'
 
 export function Logo({ suffix }: { suffix?: string }) {
   return (
@@ -72,6 +74,7 @@ const PATIENT_NAV: { group: string; items: NavItem[] }[] = [
       { to: '/historique', label: 'Historique', icon: <ClipboardList size={18} /> },
       { to: '/famille', label: 'Dossier familial', icon: <Users size={18} /> },
       { to: '/profil', label: 'Profil & paramètres', icon: <User size={18} /> },
+      { to: '/installer', label: "Télécharger l'application", icon: <Download size={18} /> },
     ],
   },
 ]
@@ -121,14 +124,17 @@ function ProfileSwitcher() {
 
 function AppSwitcher() {
   const { pathname } = useLocation()
+  const isAdmin = useStore((s) => !!s.adminCode)
   const current = pathname.startsWith('/agent') ? 'agent' : pathname.startsWith('/admin') ? 'admin' : 'patient'
+  // Le bouton Admin n'apparaît que sur l'appareil de l'administratrice (code administrateur validé).
+  const apps = [
+    { k: 'patient', to: '/', label: 'Patient' },
+    { k: 'agent', to: '/agent', label: 'Agent' },
+    ...(isAdmin ? [{ k: 'admin', to: '/admin', label: 'Admin' }] : []),
+  ]
   return (
     <div className="hidden items-center rounded-full bg-slate-100 p-1 text-xs font-semibold lg:flex">
-      {[
-        { k: 'patient', to: '/', label: 'Patient' },
-        { k: 'agent', to: '/agent', label: 'Agent' },
-        { k: 'admin', to: '/admin', label: 'Admin' },
-      ].map((a) => (
+      {apps.map((a) => (
         <Link key={a.k} to={a.to} className={cx('rounded-full px-3 py-1', current === a.k ? 'bg-white text-ink shadow-sm' : 'text-slate-500 hover:text-ink')}>
           {a.label}
         </Link>
@@ -138,6 +144,7 @@ function AppSwitcher() {
 }
 
 export function PatientLayout() {
+  const isAdmin = useStore((s) => !!s.adminCode)
   const unread = useStore((s) => s.notifications.filter((n) => !n.read).length)
   const activeMissions = useStore((s) => s.missions.filter((m) => !['livree', 'annulee'].includes(m.status)).length)
   const [menu, setMenu] = useState(false)
@@ -194,13 +201,15 @@ export function PatientLayout() {
                 {g.items.map((i) => <SideLink key={i.to} item={i} onClick={() => setMenu(false)} />)}
               </div>
             ))}
-            <div className="mt-4 grid grid-cols-2 gap-2 border-t pt-4 text-sm font-semibold">
-              <Link to="/agent" className="rounded-xl bg-slate-100 px-3 py-2 text-center">App Agent</Link>
-              <Link to="/admin" className="rounded-xl bg-slate-100 px-3 py-2 text-center">Admin</Link>
+            <div className={cx('mt-4 grid gap-2 border-t pt-4 text-sm font-semibold', isAdmin ? 'grid-cols-2' : 'grid-cols-1')}>
+              <Link to="/agent" onClick={() => setMenu(false)} className="rounded-xl bg-slate-100 px-3 py-2 text-center">App Agent</Link>
+              {isAdmin && <Link to="/admin" onClick={() => setMenu(false)} className="rounded-xl bg-slate-100 px-3 py-2 text-center">Admin</Link>}
             </div>
           </div>
         </div>
       )}
+
+      <InstallBanner />
 
       {/* Bouton URGENCE permanent */}
       {pathname !== '/urgences' && (
@@ -232,7 +241,10 @@ export function PatientLayout() {
   )
 }
 
-function ConsoleLayout({ suffix, nav, dark }: { suffix: string; nav: NavItem[]; dark?: boolean }) {
+function ConsoleLayout({ suffix, nav, dark, admin }: { suffix: string; nav: NavItem[]; dark?: boolean; admin?: boolean }) {
+  const adminCode = useStore((s) => s.adminCode)
+  const setAdminCode = useStore((s) => s.setAdminCode)
+  const locked = admin && !adminCode
   return (
     <div className="min-h-dvh">
       <Simulation />
@@ -243,8 +255,11 @@ function ConsoleLayout({ suffix, nav, dark }: { suffix: string; nav: NavItem[]; 
           <div className="flex-1" />
           <div className={dark ? 'text-ink' : ''}><AppSwitcher /></div>
           <Link to="/" className={cx('rounded-full px-3 py-1.5 text-xs font-semibold lg:hidden', dark ? 'bg-white/10' : 'bg-slate-100')}>Patient</Link>
+          {admin && adminCode && (
+            <button onClick={() => setAdminCode('')} title="Fermer l'espace Admin sur cet appareil" aria-label="Fermer l'espace Admin" className={cx('rounded-full p-2', dark ? 'hover:bg-white/10' : 'hover:bg-slate-100')}><LogOut size={16} /></button>
+          )}
         </div>
-        <nav className="scrollbar-none mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 pb-2">
+        {!locked && <nav className="scrollbar-none mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 pb-2">
           {nav.map((i) => (
             <NavLink
               key={i.to}
@@ -258,9 +273,10 @@ function ConsoleLayout({ suffix, nav, dark }: { suffix: string; nav: NavItem[]; 
               {i.icon}{i.label}
             </NavLink>
           ))}
-        </nav>
+        </nav>}
       </header>
-      <main className="mx-auto max-w-7xl px-4 pt-5 pb-16"><Outlet /></main>
+      <main className="mx-auto max-w-7xl px-4 pt-5 pb-16">{admin ? <AdminGate><Outlet /></AdminGate> : <Outlet />}</main>
+      {!admin && <InstallBanner />}
     </div>
   )
 }
@@ -283,6 +299,7 @@ export function AdminLayout() {
     <ConsoleLayout
       suffix="Admin"
       dark
+      admin
       nav={[
         { to: '/admin', label: 'Command Center', icon: <LayoutDashboard size={16} />, end: true },
         { to: '/admin/missions', label: 'Missions', icon: <Truck size={16} /> },

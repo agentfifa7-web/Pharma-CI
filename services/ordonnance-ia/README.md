@@ -40,7 +40,7 @@ Après la publication, la page « Envoyer une ordonnance » lit les ordonnances 
 ## Mettre à jour le service
 Quand `worker.js` change dans ce dépôt, il faut recoller le code chez Cloudflare (la clé, elle, est conservée) :
 **Workers & Pages** → `ordonnance-ia` → **Edit code** → tout effacer → coller le nouveau `worker.js` → **Deploy**.
-L'adresse du service affiche alors le numéro de version (`"version":8`).
+L'adresse du service affiche alors le numéro de version (`"version":9`).
 
 ## Missions partagées entre patients et agents (base de données)
 Sans cette base, une mission n'existe que sur le téléphone du patient : l'agent ne la reçoit pas sur son propre
@@ -64,6 +64,14 @@ Les agents enregistrés (nom, téléphone, zone, disponibilité, dernière conne
 L'administration du site (`/admin/agents`, `/admin/missions`) les voit après avoir saisi le même code agent, quel que
 soit l'ordinateur ou le téléphone utilisé. Une mission n'est lancée que si le service l'a bien enregistrée ; sinon le
 patient voit un message et peut réessayer.
+
+## Espace Admin réservé à l'administratrice
+Le bouton **Admin** n'apparaît que sur les appareils où le code administrateur a été saisi. Mise en place (une fois) :
+**Settings** → **Variables and Secrets** → **Add** : Type **Secret**, Name `ADMIN_CODE`, Value : un code connu de
+l'administratrice seule (différent du code agent, au moins 8 caractères) → **Deploy**. L'adresse du service affiche
+alors `"adminCode":true`. Ensuite, ouvrir `https://www.pharma-ci.org/admin` sur son téléphone ou son ordinateur et
+saisir ce code : le bouton Admin apparaît sur cet appareil. Ce code vaut aussi code agent (agents et missions de tous
+les téléphones). Changer `ADMIN_CODE` chez Cloudflare ferme l'espace Admin sur tous les appareils.
 
 ## Diagnostic
 Ouvrir `https://ordonnance-ia.agentfifa7.workers.dev/?diagnostic` : pour chaque modèle Gemini utilisé, la page fait une
