@@ -58,6 +58,7 @@ export default function PharmacyDetail() {
         {p.claimed
           ? <Badge tone="green"><BadgeCheck size={12} />Fiche revendiquée</Badge>
           : <Badge tone="slate"><Database size={12} />Référencée à partir de données publiques</Badge>}
+        {p.authorized && <Badge tone="green"><BadgeCheck size={12} />{p.authorized.label}</Badge>}
       </div>
 
       {/* Actions */}
@@ -179,6 +180,8 @@ export default function PharmacyDetail() {
             <p className="mt-1 text-slate-500">
               {p.sourceUrl ? <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-600 underline">{p.source}</a> : p.source}. Informations à confirmer auprès de la pharmacie.
             </p>
+            {p.authorized && <p className="mt-1 text-slate-500">✅ Figure sur la liste des officines autorisées publiée par l'AIRP (Autorité Ivoirienne de Régulation Pharmaceutique).</p>}
+            {p.positionSource && <p className="mt-1 text-slate-500">📍 Position : {p.positionSource}.</p>}
             {p.positionApprox && <p className="mt-1 text-amber-700">📍 Position approximative (centre de la commune) : l'itinéraire recherche la pharmacie par son nom.</p>}
             {p.hoursApprox && <p className="mt-1 text-amber-700">🕗 Horaires indicatifs : la source n'indique pas d'horaires propres à cette pharmacie. Appelez avant de vous déplacer.</p>}
             {!p.claimed && (
