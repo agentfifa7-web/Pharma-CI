@@ -24,7 +24,8 @@ import { imagePreview } from '../lib/crypto'
 
 /** Adresse du service de lecture par IA (Cloudflare Worker). Vide = lecture par IA désactivée. */
 export const ORDONNANCE_IA_URL = 'https://ordonnance-ia.agentfifa7.workers.dev'
-export const SERVICE_URL = ((import.meta.env?.VITE_ORDONNANCE_IA_URL as string | undefined) || ORDONNANCE_IA_URL).trim()
+// Sans « / » final : l'adresse sert de base aux chemins /missions et /agents.
+export const SERVICE_URL = ((import.meta.env?.VITE_ORDONNANCE_IA_URL as string | undefined) || ORDONNANCE_IA_URL).trim().replace(/\/+$/, '')
 export const aiReadingEnabled = () => !!SERVICE_URL
 
 export type OcrResult = {

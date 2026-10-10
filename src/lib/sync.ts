@@ -88,7 +88,8 @@ export async function fetchMission(id: string, auth: SyncAuth): Promise<Mission 
 export async function listMissions(agentCode: string): Promise<{ missions: Mission[] } | { error: string; status: number }> {
   try {
     const { status, body } = await call('/missions', { headers: headers({ agentCode }) })
-    if (status === 200) return { missions: (body.missions as Mission[]) ?? [] }
+    if (status === 200 && Array.isArray(body.missions)) return { missions: body.missions as Mission[] }
+    if (status === 200) return { status: 502, error: 'Réponse inattendue du service PHARMA CI (adresse ou version du service à vérifier)' }
     return { status, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
   } catch {
     return { status: 0, error: 'Pas de connexion' }
@@ -99,7 +100,8 @@ export async function listMissions(agentCode: string): Promise<{ missions: Missi
 export async function listAgents(agentCode: string): Promise<{ agents: Agent[] } | { error: string; status: number }> {
   try {
     const { status, body } = await call('/agents', { headers: headers({ agentCode }) })
-    if (status === 200) return { agents: (body.agents as Agent[]) ?? [] }
+    if (status === 200 && Array.isArray(body.agents)) return { agents: body.agents as Agent[] }
+    if (status === 200) return { status: 502, error: 'Réponse inattendue du service PHARMA CI (adresse ou version du service à vérifier)' }
     return { status, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
   } catch {
     return { status: 0, error: 'Pas de connexion' }

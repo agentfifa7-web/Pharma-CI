@@ -29,11 +29,14 @@ export function estimateMedications(lines: PrescriptionLine[]) {
   }
 }
 
-export const serviceFee = (medications: number) => Math.min(3500, Math.max(1000, Math.round((medications * 0.06) / 50) * 50))
+/** Frais de service PHARMA CI : forfait unique. */
+export const SERVICE_FEE = 200
+export const serviceFee = (_medications: number) => SERVICE_FEE
 
+/** Livraison (pharmacie → patient) : 500 FCFA sous 3 km, 1 000 FCFA de 3 à 6 km, 1 500 FCFA au-delà. */
 export function deliveryFee(from: LatLng, to: LatLng) {
   const km = distanceKm(from, to)
-  return Math.min(5000, 1000 + Math.round((km * 250) / 50) * 50)
+  return km < 3 ? 500 : km <= 6 ? 1000 : 1500
 }
 
 export function buildEstimate(lines: PrescriptionLine[], nearestPharmacy: LatLng, home: LatLng) {

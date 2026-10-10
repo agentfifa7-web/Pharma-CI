@@ -7,6 +7,7 @@ import { VEHICLE_LABEL } from '../../data/agents'
 import type { Agent } from '../../types'
 import { dateTimeFr, fcfa, initials } from '../../lib/format'
 import AccessCard from '../../components/AccessCard'
+import { CI_PHONE_HINT, normalizeCiPhone } from '../../lib/phone'
 import { MISSION_TONE, isMissionActive } from '../../data/statusUi'
 
 export default function AgentDashboard() {
@@ -148,20 +149,24 @@ export default function AgentDashboard() {
 function ProfileCard({ agent, onSaved }: { agent?: Agent; onSaved?: () => void }) {
   const saveAgentProfile = useStore((s) => s.saveAgentProfile)
   const [form, setForm] = useState({ name: agent?.name ?? '', phone: agent?.phone ?? '', zone: agent?.zone ?? '', vehicle: agent?.vehicle ?? ('moto' as Agent['vehicle']) })
-  const ok = form.name.trim() && form.phone.trim()
+  const phone = normalizeCiPhone(form.phone)
+  const ok = form.name.trim() && phone
   return (
     <Card className="mb-4">
       <p className="flex items-center gap-2 font-bold"><UserRound size={18} className="text-brand-600" /> Mon profil d'agent</p>
       <p className="mt-1 text-sm text-slate-600">Le patient voit votre nom et peut vous appeler pendant la mission.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Input label="Nom et prénom" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <Input label="Téléphone" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        <div>
+          <Input label="Téléphone" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Ex. 07 08 09 10 11" />
+          {form.phone.trim() && !phone && <p className="mt-1 text-xs font-semibold text-red-600">{CI_PHONE_HINT}</p>}
+        </div>
         <Input label="Zone (commune)" value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })} />
         <Select label="Moyen de transport" value={form.vehicle} onChange={(e) => setForm({ ...form, vehicle: e.target.value as Agent['vehicle'] })}>
           {Object.entries(VEHICLE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </Select>
       </div>
-      <Button className="mt-3 w-full sm:w-auto" disabled={!ok} onClick={() => { saveAgentProfile({ name: form.name.trim(), phone: form.phone.trim(), zone: form.zone.trim(), vehicle: form.vehicle }); onSaved?.() }}>Enregistrer mon profil</Button>
+      <Button className="mt-3 w-full sm:w-auto" disabled={!ok} onClick={() => { saveAgentProfile({ name: form.name.trim(), phone: phone!, zone: form.zone.trim(), vehicle: form.vehicle }); onSaved?.() }}>Enregistrer mon profil</Button>
     </Card>
   )
 }

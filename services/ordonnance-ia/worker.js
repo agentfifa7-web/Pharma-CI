@@ -21,7 +21,7 @@
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 7
+const VERSION = 8
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
@@ -108,6 +108,8 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
     const url = new URL(request.url)
+    // « //missions » (adresse du service saisie avec un « / » final) est traité comme « /missions ».
+    url.pathname = url.pathname.replace(/\/{2,}/g, '/')
     if (url.pathname.startsWith('/missions') || url.pathname.startsWith('/agents')) {
       if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
       try {

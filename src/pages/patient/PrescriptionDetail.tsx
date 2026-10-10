@@ -10,6 +10,7 @@ import { usePharmacies } from '../../lib/usePharmacies'
 import { dateTimeFr, fcfa } from '../../lib/format'
 import { medById } from '../../data/medications'
 import { sharedMissionsAvailable } from '../../lib/sync'
+import { CI_PHONE_HINT, normalizeCiPhone } from '../../lib/phone'
 import { MISSION_TONE, PAYMENT_METHODS, PRESCRIPTION_TONE, RELATION_LABEL, missionAgent } from '../../data/statusUi'
 
 export default function PrescriptionDetail() {
@@ -20,7 +21,6 @@ export default function PrescriptionDetail() {
   const agents = useStore((s) => s.agents)
   const profiles = useStore((s) => s.profiles)
   const user = useStore((s) => s.user)
-  const locationGranted = useStore((s) => s.locationGranted)
   const logAccess = useStore((s) => s.logAccess)
   const confirmPrescription = useStore((s) => s.confirmPrescription)
   const requestRenewal = useStore((s) => s.requestRenewal)
@@ -39,6 +39,24 @@ export default function PrescriptionDetail() {
   const [method, setMethod] = useState(PAYMENT_METHODS[0]!.id)
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState('')
+  // Position GPS obligatoire : elle fixe le lieu de livraison, la distance et donc le prix de la livraison.
+  const setPosition = useStore((s) => s.setPosition)
+  const [gps, setGps] = useState<'idle' | 'loading' | 'ok' | 'denied' | 'unavailable'>('idle')
+  const locate = () => {
+    if (!navigator.geolocation) return setGps('unavailable')
+    setGps('loading')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }, true); setGps('ok') },
+      (err) => setGps(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable'),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+    )
+  }
+  const phoneOk = normalizeCiPhone(phone)
+  useEffect(() => {
+    // Localisation déjà autorisée sur ce téléphone : position actualisée sans rien demander.
+    void navigator.permissions?.query({ name: 'geolocation' }).then((r) => { if (r.state === 'granted') locate() }).catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [zoom, setZoom] = useState<string | null>(null)
   const [renewOpen, setRenewOpen] = useState(false)
 
@@ -65,10 +83,10 @@ export default function PrescriptionDetail() {
   const canRenew = (p.status === 'livree' || p.status === 'partiellement_executee') && (!mission || mission.status === 'livree')
 
   const pay = async () => {
-    if (!estimate || !address.trim() || !phone.trim()) return
+    if (!estimate || !address.trim() || !phoneOk || gps !== 'ok') return
     setPaying(true)
     setPayError('')
-    if (phone.trim() !== user.phone) setUser({ phone: phone.trim() })
+    if (phoneOk !== user.phone) setUser({ phone: phoneOk })
     // La mission n'est lancée que si le service des agents l'a bien enregistrée : sinon aucun agent ne la verrait.
     if (!(await sharedMissionsAvailable())) {
       setPaying(false)
@@ -81,7 +99,7 @@ export default function PrescriptionDetail() {
       address: address.trim(),
       position: user.position,
       paymentMethod: method,
-      patientPhone: phone.trim(),
+      patientPhone: phoneOk,
     })
     setPaying(false)
     if (!res.ok) return setPayError(`${res.error}. La mission n'a pas été lancée, réessayez.`)
@@ -217,7 +235,7 @@ export default function PrescriptionDetail() {
             </div>
             <div className="flex items-start gap-2 rounded-2xl border border-brand-200 bg-brand-50 p-3 text-sm">
               <span className="text-xl">🚚</span>
-              <div><p className="font-bold">Service PHARMA CI</p><p className="text-slate-600">Facturé séparément : {fcfa(estimate.service + estimate.delivery)} (service + livraison).</p></div>
+              <div><p className="font-bold">Service PHARMA CI</p><p className="text-slate-600">Facturé séparément : {fcfa(estimate.service + estimate.delivery)} (service {fcfa(estimate.service)} + livraison {fcfa(estimate.delivery)}).</p><p className="mt-0.5 text-xs text-slate-500">Livraison : 500 FCFA à moins de 3 km de la pharmacie, 1 000 FCFA de 3 à 6 km, 1 500 FCFA au-delà.</p></div>
             </div>
           </div>
 
@@ -225,8 +243,21 @@ export default function PrescriptionDetail() {
             <Input label="Adresse de livraison (obligatoire)" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Commune, quartier, rue, repère…" />
             {!address.trim() && <p className="mt-1 text-xs font-semibold text-amber-700">Saisissez l'adresse où l'agent doit livrer pour lancer la mission.</p>}
             <Input label="Votre téléphone (obligatoire)" type="tel" inputMode="tel" className="mt-3" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Ex. 07 00 00 00 00" />
-            {!phone.trim() && <p className="mt-1 text-xs font-semibold text-amber-700">L'agent doit pouvoir vous appeler en cas de souci (médicament indisponible, prix, adresse).</p>}
-            <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><MapPin size={12} /> {locationGranted ? 'Votre position GPS est utilisée pour le suivi.' : 'Localisation non activée : l\'agent se guidera sur l\'adresse saisie.'}</p>
+            {!phone.trim() ? (
+              <p className="mt-1 text-xs font-semibold text-amber-700">L'agent doit pouvoir vous appeler en cas de souci (médicament indisponible, prix, adresse).</p>
+            ) : !phoneOk && <p className="mt-1 text-xs font-semibold text-red-600">{CI_PHONE_HINT}</p>}
+
+            <div className={cx('mt-3 rounded-xl p-3 text-sm', gps === 'ok' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900')}>
+              <p className="flex items-center gap-1.5 font-semibold"><MapPin size={14} /> Localisation GPS (obligatoire)</p>
+              <p className="mt-0.5 text-xs">
+                {gps === 'ok' ? 'Position enregistrée : l\'agent vous trouvera et le prix de la livraison est calculé sur la distance.'
+                  : gps === 'loading' ? 'Recherche de votre position…'
+                  : gps === 'denied' ? 'La localisation est bloquée. Autorisez-la pour ce site dans les réglages du navigateur (icône à gauche de l\'adresse), puis réessayez.'
+                  : gps === 'unavailable' ? 'Position introuvable. Activez la localisation (GPS) du téléphone, puis réessayez.'
+                  : 'Activez votre localisation pour que l\'agent vous trouve et pour calculer le prix de la livraison.'}
+              </p>
+              {gps !== 'ok' && gps !== 'loading' && <Button size="sm" className="mt-2" onClick={locate}><MapPin size={14} /> Activer ma localisation</Button>}
+            </div>
 
             <p className="mt-4 mb-2 text-sm font-semibold text-slate-700">Moyen de paiement</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -244,7 +275,7 @@ export default function PrescriptionDetail() {
               ))}
             </div>
 
-            <Button size="lg" variant="accent" className="mt-4 w-full" onClick={() => void pay()} disabled={!address.trim() || !phone.trim() || paying}>
+            <Button size="lg" variant="accent" className="mt-4 w-full" onClick={() => void pay()} disabled={!address.trim() || !phoneOk || gps !== 'ok' || paying}>
               <Rocket size={18} /> {paying ? 'ENVOI AUX AGENTS…' : 'PAYER ET LANCER LA MISSION'}
             </Button>
             {payError && <p role="alert" className="mt-2 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{payError}</p>}
