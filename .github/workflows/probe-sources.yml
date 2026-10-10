@@ -1,4 +1,4 @@
-name: Génération initiale des données officielles (temporaire)
+name: Génération initiale des données officielles (temporaire, 2)
 
 on:
   push:

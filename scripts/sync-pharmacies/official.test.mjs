@@ -82,6 +82,16 @@ test('AMM AIRP : complète un médicament connu, ajoute une AMM valide, ignore u
   assert.equal(ammFields({ numero_amm: 'A', expiry_date: '01-01-2020' }, '2026-10-10').xo, 1)
 })
 
+test('AMM AIRP : plusieurs AMM pour la même marque et le même dosage → pas de rapprochement', () => {
+  const rows = [{ i: 'med-1', n: 'ATORVASTATINE SP CP PELL 40MG B/30' }]
+  const r = mergeAirpMedications(rows, [
+    { numero_amm: 'E-1', denomination: 'ATORVASTATINE 40 MG COMPRIME', expiry_date: '01-01-2030' },
+    { numero_amm: 'E-2', denomination: 'ATORVASTATINE 40 MG COMPRIME PELLICULE', expiry_date: '01-01-2030' },
+  ], '2026-10-10')
+  assert.deepEqual(r, { enriched: 0, added: 0 })
+  assert.equal(rows[0].a, undefined)
+})
+
 test('alertes AIRP et OMS', () => {
   const a = airpAlerts([
     { id: 599, title: 'AVIS DE RAPPEL LOTS DE PANTO-DENK 40 MG', filename: 'documents/AVIS DE RAPPEL.pdf', is_published_at: '2026-07-29T00:00:00Z', group: { name: 'Rappels de lots', slug: 'rappels-de-lots' } },

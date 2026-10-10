@@ -261,6 +261,9 @@ export function mergeAirpMedications(rows, amm, today) {
     const k = brandKey(r.n)
     index.set(k, index.has(k) ? null : r) // null : plusieurs candidats, rapprochement ambigu
   }
+  // Une même clé (marque + dosage) portée par plusieurs AMM (génériques, présentations) : pas de rapprochement.
+  const ammCount = new Map()
+  for (const m of amm) if (m.denomination) ammCount.set(brandKey(m.denomination), (ammCount.get(brandKey(m.denomination)) ?? 0) + 1)
   let enriched = 0
   const added = []
   const seen = new Set()
@@ -268,7 +271,9 @@ export function mergeAirpMedications(rows, amm, today) {
     if (!m.numero_amm || !m.denomination || seen.has(m.numero_amm)) continue
     seen.add(m.numero_amm)
     const fields = ammFields(m, today)
-    const r = index.get(brandKey(m.denomination))
+    const key = brandKey(m.denomination)
+    const r = ammCount.get(key) === 1 ? index.get(key) : index.has(key) ? null : undefined
+    if (r === null) continue // marque connue mais rapprochement ambigu : ni enrichie, ni ajoutée en double
     if (r) {
       if (r.a) continue // déjà rapproché d'une autre AMM
       Object.assign(r, fields)
