@@ -13,15 +13,15 @@ export default function AgentEarnings() {
   const agents = useStore((s) => s.agents)
   const missions = useStore((s) => s.missions)
   const currentAgentId = useStore((s) => s.currentAgentId)
-  const agent = agents.find((a) => a.id === currentAgentId) ?? agents[0]!
+  const agent = agents.find((a) => a.id === currentAgentId)
 
   const finished = useMemo(
     () =>
       missions
-        .filter((m) => m.agentId === agent.id && m.status === 'livree')
+        .filter((m) => !!agent && m.agentId === agent.id && m.status === 'livree')
         .map((m) => ({ m, earned: agentEarning(m), at: m.timeline.find((t) => t.status === 'livree')?.at ?? m.createdAt }))
         .sort((a, b) => b.at.localeCompare(a.at)),
-    [missions, agent.id],
+    [missions, agent],
   )
   const appTotal = finished.reduce((s, x) => s + x.earned, 0)
 
@@ -41,9 +41,18 @@ export default function AgentEarnings() {
   }, [finished])
   const max = Math.max(1, ...days.map((d) => d.total))
 
+  if (!agent) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <PageHeader title="Revenus" icon={<Wallet size={22} />} />
+        <EmptyState icon={<Wallet size={26} />} title="Aucun profil d'agent sur ce téléphone" text="Saisissez le code agent puis votre nom et votre téléphone dans le tableau de bord." action={<Link to="/agent" className="font-semibold text-brand-600 underline">Tableau de bord</Link>} />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="Revenus" subtitle={`${agent.name} · compte de test`} icon={<Wallet size={22} />} />
+      <PageHeader title="Revenus" subtitle={agent.name} icon={<Wallet size={22} />} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Revenus cumulés" value={<span className="text-lg">{fcfa(agent.earnings)}</span>} icon={<Wallet size={18} />} />

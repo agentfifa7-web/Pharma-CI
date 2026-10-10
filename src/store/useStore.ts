@@ -4,13 +4,12 @@ import type {
   Agent, FamilyProfile, FraudEvent, Invoice, LatLng, Mission, MissionStatus, Prescription,
   PrescriptionLine, PrescriptionStatus, Rating, Treatment, UserInsurance, VigilanceReport,
 } from '../types'
-import { SEED_AGENTS } from '../data/agents'
 import { PHARMACIES } from '../data/pharmacies'
 import { ABIDJAN, distanceKm, lerp, travelMinutes } from '../lib/geo'
 import { otpCode, prescriptionIdFrom, randomCode, uid } from '../lib/crypto'
 import { rankAgents } from '../lib/assign'
 import { FRAUD_PRICE_GAP } from '../lib/pricing'
-import { createMission, updateMission, type SyncAuth } from '../lib/sync'
+import { createMission, deleteAgent, saveAgent, updateMission, type SyncAuth } from '../lib/sync'
 
 export type Notification = { id: string; at: string; title: string; body: string; read: boolean; link?: string; tone?: 'info' | 'success' | 'warning' | 'danger' }
 export type AuditEntry = { id: string; at: string; actor: string; action: string; ref: string }
@@ -58,6 +57,8 @@ type State = {
   agentCode: string
   /** Dernière erreur de synchronisation côté agent (ex. code refusé). */
   agentSyncError?: string
+  /** Dernière synchronisation réussie avec le service (code agent). */
+  lastSync?: string
   treatments: Treatment[]
   reports: VigilanceReport[]
   fraud: FraudEvent[]
@@ -85,7 +86,8 @@ type State = {
   logAccess: (actor: string, action: string, ref: string) => void
 
   // Missions
-  launchMission: (input: { prescriptionId: string; estimate: Mission['estimate']; address: string; position: LatLng; paymentMethod: string; remote?: boolean; patientPhone?: string }) => Mission
+  /** Enregistre la mission sur le service des agents ; rien n'est verrouillé si l'envoi échoue. */
+  launchMission: (input: { prescriptionId: string; estimate: Mission['estimate']; address: string; position: LatLng; paymentMethod: string; patientPhone?: string }) => Promise<{ ok: true; mission: Mission } | { ok: false; error: string }>
   assignAgent: (missionId: string) => void
   agentArrive: (missionId: string, pharmacyId: string) => void
   submitInvoice: (missionId: string, invoice: Invoice) => void
@@ -109,7 +111,13 @@ type State = {
   setAgentAvailability: (id: string, available: boolean) => void
   setAgentCode: (code: string) => void
   setAgentSyncError: (error?: string) => void
+  setLastSync: (at: string) => void
   saveAgentProfile: (p: Pick<Agent, 'name' | 'phone' | 'zone' | 'vehicle'>) => void
+  /** Liste des agents enregistrés sur le service (remplace la liste locale). */
+  setRemoteAgents: (agents: Agent[]) => void
+  /** Envoie le profil d'un agent au service (code agent requis). */
+  pushAgent: (id: string) => Promise<boolean>
+  removeAgent: (id: string) => Promise<boolean>
 
   // Traitements
   addTreatment: (t: Omit<Treatment, 'id' | 'takenLog'>) => void
@@ -139,8 +147,8 @@ const initial = () => ({
   favorites: [] as string[],
   prescriptions: [] as Prescription[],
   missions: [] as Mission[],
-  agents: SEED_AGENTS,
-  currentAgentId: SEED_AGENTS[0]!.id,
+  agents: [] as Agent[],
+  currentAgentId: '',
   agentCode: '',
   agentSyncError: undefined as string | undefined,
   treatments: [] as Treatment[],
@@ -231,30 +239,28 @@ export const useStore = create<State>()(
         deletePrescription: (id) => set((s) => ({ prescriptions: s.prescriptions.filter((p) => p.id !== id || p.locked) })),
         logAccess: (actor, action, ref) => set((s) => ({ audit: [{ id: uid('au-'), at: now(), actor, action, ref }, ...s.audit].slice(0, 300) })),
 
-        launchMission: ({ prescriptionId, estimate, address, position, paymentMethod, remote, patientPhone }) => {
-          const p = get().prescriptions.find((x) => x.id === prescriptionId)!
+        launchMission: async ({ prescriptionId, estimate, address, position, paymentMethod, patientPhone }) => {
+          const p = get().prescriptions.find((x) => x.id === prescriptionId)
+          if (!p) return { ok: false, error: 'Ordonnance introuvable' }
           const profile = get().profiles.find((x) => x.id === p.profileId)
           const mission: Mission = {
             id: `MIS-${randomCode(6)}`, prescriptionId, profileId: p.profileId, patientName: profile?.name ?? get().user.name,
             deliveryAddress: address, deliveryPosition: position, createdAt: now(), status: 'payee', estimate,
             partial: false, otp: otpCode(), paymentMethod,
             timeline: [{ at: now(), status: 'payee', label: `Paiement du service confirmé (${paymentMethod})` }],
-            ...(remote
-              ? {
-                  remote: true, syncPending: true, token: randomCode(24), patientPhone: patientPhone || get().user.phone,
-                  // Copie de l'ordonnance pour l'agent : 3 photos au plus, pour rester léger.
-                  prescription: { id: p.id, lines: p.lines, previews: p.previews.slice(0, 3), fileNames: p.fileNames.slice(0, 3) },
-                }
-              : {}),
+            remote: true, token: randomCode(24), patientPhone: patientPhone || get().user.phone,
+            // Copie de l'ordonnance pour l'agent : 3 photos au plus, pour rester léger.
+            prescription: { id: p.id, lines: p.lines, previews: p.previews.slice(0, 3), fileNames: p.fileNames.slice(0, 3) },
           }
-          set((s) => ({ missions: [mission, ...s.missions] }))
-          if (remote) void get().syncMission(mission.id)
+          const res = await createMission(mission)
+          if (!res.ok) return { ok: false, error: res.error }
+          set((s) => ({ missions: [{ ...mission, rev: res.rev, syncPending: false }, ...s.missions] }))
           patchPrescription(prescriptionId, (x) => ({
             locked: true, missionId: mission.id, status: 'mission_lancee',
             history: [...x.history, { at: now(), event: `🔒 Ordonnance verrouillée — mission ${mission.id}` }],
           }))
-          get().notify({ title: 'Mission lancée 🚀', body: `Votre mission ${mission.id} est payée. ${remote ? 'Elle est transmise aux agents PHARMA CI.' : 'Recherche de l\'agent le plus proche…'}`, link: `/missions/${mission.id}`, tone: 'success' })
-          return mission
+          get().notify({ title: 'Mission lancée 🚀', body: `Votre mission ${mission.id} est transmise aux agents PHARMA CI.`, link: `/missions/${mission.id}`, tone: 'success' })
+          return { ok: true, mission }
         },
 
         assignAgent: (missionId) => {
@@ -448,7 +454,7 @@ export const useStore = create<State>()(
           const m = get().missions.find((x) => x.id === missionId)
           const agent = get().agents.find((a) => a.id === get().currentAgentId)
           if (!m || m.status !== 'payee' || !agent) return
-          patchAgent(agent.id, (a) => ({ activeMissions: a.activeMissions + 1 }))
+          patchAgent(agent.id, (a) => ({ activeMissions: a.activeMissions + 1, available: true }))
           patchMission(missionId, (x) => ({
             status: 'agent_affecte', agentId: agent.id, agentName: agent.name, agentPhone: agent.phone, agentPosition: agent.position,
             eta: travelMinutes(distanceKm(agent.position, x.deliveryPosition), agent.vehicle) + 25,
@@ -467,7 +473,10 @@ export const useStore = create<State>()(
             return { ok: false, error: res.status === 403 ? 'Code incorrect. Demandez au patient le code affiché dans son application.' : res.status === 0 ? 'Pas de connexion. Réessayez dans un instant.' : res.error }
           }
           replaceMission(missionId, () => ({ ...next, rev: res.rev, syncPending: false }))
-          if (m.agentId) patchAgent(m.agentId, (a) => ({ activeMissions: Math.max(0, a.activeMissions - 1), completed: a.completed + 1, earnings: a.earnings + Math.round(m.estimate.delivery * 0.8 + m.estimate.service * 0.3) }))
+          if (m.agentId) {
+            patchAgent(m.agentId, (a) => ({ activeMissions: Math.max(0, a.activeMissions - 1), completed: a.completed + 1, earnings: a.earnings + Math.round(m.estimate.delivery * 0.8 + m.estimate.service * 0.3) }))
+            void get().pushAgent(m.agentId)
+          }
           return { ok: true }
         },
 
@@ -479,15 +488,45 @@ export const useStore = create<State>()(
         },
 
         setCurrentAgent: (currentAgentId) => set({ currentAgentId }),
-        setAgentAvailability: (id, available) => patchAgent(id, () => ({ available })),
+        setAgentAvailability: (id, available) => {
+          patchAgent(id, () => ({ available }))
+          void get().pushAgent(id)
+        },
         setAgentCode: (agentCode) => set({ agentCode: agentCode.trim(), agentSyncError: undefined }),
         setAgentSyncError: (agentSyncError) => set({ agentSyncError }),
+        setLastSync: (lastSync) => set({ lastSync }),
         saveAgentProfile: (p) => {
           const current = get().agents.find((a) => a.id === get().currentAgentId)
-          // Un vrai agent reçoit son propre identifiant (les comptes de test « ag-0x » restent partagés).
-          if (current && !SEED_AGENTS.some((s) => s.id === current.id)) return patchAgent(current.id, () => p)
-          const agent: Agent = { id: uid('ag-'), photo: '', position: current?.position ?? ABIDJAN, available: true, activeMissions: 0, rating: 0, completed: 0, earnings: 0, ...p }
-          set((s) => ({ agents: [...s.agents, agent], currentAgentId: agent.id }))
+          if (current) patchAgent(current.id, () => p)
+          else {
+            const agent: Agent = { id: uid('ag-'), photo: '', position: ABIDJAN, available: true, activeMissions: 0, rating: 0, completed: 0, earnings: 0, ...p }
+            set((s) => ({ agents: [...s.agents, agent], currentAgentId: agent.id }))
+          }
+          void get().pushAgent(get().currentAgentId)
+        },
+        setRemoteAgents: (remote) =>
+          set((s) => {
+            // Missions en cours de chaque agent, comptées sur les missions connues de cet appareil.
+            const active = (id: string) => s.missions.filter((m) => m.agentId === id && !['livree', 'annulee'].includes(m.status)).length
+            const own = s.agents.find((a) => a.id === s.currentAgentId)
+            // Le profil de ce téléphone fait foi pour lui-même (modifications pas encore envoyées comprises).
+            const list = remote.map((a) => (own && a.id === own.id ? { ...own, lastSeen: a.lastSeen } : { ...a, photo: a.photo ?? '', activeMissions: active(a.id) }))
+            if (own && !list.some((a) => a.id === own.id)) list.push(own)
+            return { agents: list }
+          }),
+        pushAgent: async (id) => {
+          const agent = get().agents.find((a) => a.id === id)
+          const code = get().agentCode
+          if (!agent || !code) return false
+          const ok = await saveAgent(agent, code)
+          if (ok) patchAgent(id, () => ({ lastSeen: now() }))
+          return ok
+        },
+        removeAgent: async (id) => {
+          const code = get().agentCode
+          if (code && !(await deleteAgent(id, code))) return false
+          set((s) => ({ agents: s.agents.filter((a) => a.id !== id), currentAgentId: s.currentAgentId === id ? '' : s.currentAgentId }))
+          return true
         },
 
         addTreatment: (t) => set((s) => ({ treatments: [...s.treatments, { ...t, id: uid('tr-'), takenLog: [] }] })),
@@ -508,7 +547,29 @@ export const useStore = create<State>()(
         resetDemo: () => set(initial()),
       }
     },
-    { name: 'pharma-ci', version: 2, migrate: () => initial() as unknown as State },
+    {
+      name: 'pharma-ci',
+      version: 3,
+      migrate: (persisted, version) => {
+        if (version < 2 || !persisted) return initial() as unknown as State
+        // Version 3 : suppression des comptes agents de test (ag-01 à ag-07) et des missions de démonstration
+        // qui n'existaient que sur cet appareil ; les ordonnances concernées redeviennent utilisables.
+        const s = persisted as State
+        const isSeed = (id?: string) => !!id && /^ag-0\d$/.test(id)
+        const dropped = new Set(s.missions.filter((m) => !m.remote).map((m) => m.id))
+        return {
+          ...s,
+          agents: s.agents.filter((a) => !isSeed(a.id)),
+          currentAgentId: isSeed(s.currentAgentId) ? '' : s.currentAgentId,
+          missions: s.missions.filter((m) => m.remote),
+          prescriptions: s.prescriptions.map((p) =>
+            p.missionId && dropped.has(p.missionId)
+              ? { ...p, missionId: undefined, locked: false, status: p.status === 'livree' || p.status === 'partiellement_executee' ? p.status : 'en_attente' }
+              : p,
+          ),
+        } as State
+      },
+    },
   ),
 )
 

@@ -40,7 +40,7 @@ Après la publication, la page « Envoyer une ordonnance » lit les ordonnances 
 ## Mettre à jour le service
 Quand `worker.js` change dans ce dépôt, il faut recoller le code chez Cloudflare (la clé, elle, est conservée) :
 **Workers & Pages** → `ordonnance-ia` → **Edit code** → tout effacer → coller le nouveau `worker.js` → **Deploy**.
-L'adresse du service affiche alors le numéro de version (`"version":6`).
+L'adresse du service affiche alors le numéro de version (`"version":7`).
 
 ## Missions partagées entre patients et agents (base de données)
 Sans cette base, une mission n'existe que sur le téléphone du patient : l'agent ne la reçoit pas sur son propre
@@ -60,11 +60,17 @@ et son téléphone. Les missions des patients y apparaissent (actualisation tout
 une, peut appeler le patient (appel, WhatsApp, SMS), et chaque étape remonte chez le patient. Le code de livraison
 du patient n'est jamais transmis aux agents : le service le vérifie lui-même.
 
+Les agents enregistrés (nom, téléphone, zone, disponibilité, dernière connexion) sont aussi gardés dans cette base.
+L'administration du site (`/admin/agents`, `/admin/missions`) les voit après avoir saisi le même code agent, quel que
+soit l'ordinateur ou le téléphone utilisé. Une mission n'est lancée que si le service l'a bien enregistrée ; sinon le
+patient voit un message et peut réessayer.
+
 ## Diagnostic
 Ouvrir `https://ordonnance-ia.agentfifa7.workers.dev/?diagnostic` : pour chaque modèle Gemini utilisé, la page fait une
 petite lecture avec les mêmes réglages qu'une vraie ordonnance et indique si elle réussit (`"ok":true`), en combien de
 millisecondes, ou l'erreur rencontrée (clé refusée, quota atteint, modèle introuvable…). La rubrique `available` liste
-les modèles « flash » ouverts à la clé.
+les modèles « flash » ouverts à la clé. La rubrique `base` compte les missions enregistrées, celles qui attendent
+un agent et les agents enregistrés (aucune donnée personnelle).
 
 ## Robustesse
 - Les modèles travaillent en relais : `gemini-3.5-flash` (bonne lecture de l'écriture manuscrite) démarre seul ;

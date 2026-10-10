@@ -21,7 +21,7 @@
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 6
+const VERSION = 7
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
@@ -99,7 +99,7 @@ export default {
     const allowed = (env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()) : DEFAULT_ORIGINS).includes(origin)
     const cors = {
       'Access-Control-Allow-Origin': allowed ? origin : DEFAULT_ORIGINS[0],
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-Agent-Code, X-Mission-Token',
       'Access-Control-Max-Age': '86400',
       Vary: 'Origin',
@@ -108,10 +108,10 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
     const url = new URL(request.url)
-    if (url.pathname.startsWith('/missions')) {
+    if (url.pathname.startsWith('/missions') || url.pathname.startsWith('/agents')) {
       if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
       try {
-        return await handleMissions(request, env, url, json)
+        return url.pathname.startsWith('/agents') ? await handleAgents(request, env, url, json) : await handleMissions(request, env, url, json)
       } catch (e) {
         return json({ error: `Erreur de la base de données : ${String(e?.message ?? e).slice(0, 200)}` }, 500)
       }
@@ -124,6 +124,20 @@ export default {
         const [models, available] = await Promise.all([Promise.all(specs.map((spec) => ping(env.GEMINI_API_KEY, spec))), listFlashModels(env.GEMINI_API_KEY)])
         info.models = models
         info.available = available
+      }
+      // Compteurs de la base (aucune donnée personnelle) : aide à vérifier que missions et agents arrivent bien.
+      if (url.searchParams.has('diagnostic') && env.DB) {
+        try {
+          await ensureSchema(env.DB)
+          const count = async (sql) => (await env.DB.prepare(sql).first())?.n ?? 0
+          info.base = {
+            missions: await count('SELECT COUNT(*) AS n FROM missions'),
+            missionsEnAttente: await count("SELECT COUNT(*) AS n FROM missions WHERE status = 'payee'"),
+            agents: await count('SELECT COUNT(*) AS n FROM agents'),
+          }
+        } catch (e) {
+          info.base = `erreur : ${String(e?.message ?? e).slice(0, 200)}`
+        }
       }
       return json(info)
     }
@@ -325,6 +339,7 @@ async function ensureSchema(db) {
   await db.prepare(
     'CREATE TABLE IF NOT EXISTS missions (id TEXT PRIMARY KEY, rev INTEGER NOT NULL, status TEXT NOT NULL, token TEXT NOT NULL, otp TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
   ).run()
+  await db.prepare('CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)').run()
   schemaReady = true
 }
 
@@ -401,6 +416,48 @@ async function handleMissions(request, env, url, json) {
       return json({ error: 'La mission a été modifiée entre-temps', mission: view(fresh, isPatient) }, 409)
     }
     return json({ rev: row.rev + 1 })
+  }
+  return json({ error: 'Méthode non autorisée' }, 405)
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Agents enregistrés (même base). Réservé aux détenteurs du code agent (agents et administration).
+ *
+ *  GET    /agents        liste des agents (profil, disponibilité, dernière connexion)
+ *  PUT    /agents/:id    { agent } crée ou met à jour le profil d'un agent
+ *  DELETE /agents/:id    retire un agent
+ * ---------------------------------------------------------------------------------------------- */
+const AGENT_FIELDS = ['name', 'phone', 'zone', 'vehicle', 'available', 'position', 'rating', 'completed', 'earnings', 'photo']
+
+async function handleAgents(request, env, url, json) {
+  if (!env.DB) return json({ error: "La base de données n'est pas encore activée (liaison D1 « DB »)." }, 503)
+  if (!env.AGENT_CODE) return json({ error: "Le code des agents n'est pas encore configuré (secret AGENT_CODE)." }, 503)
+  if ((request.headers.get('X-Agent-Code') ?? '') !== env.AGENT_CODE) return json({ error: 'Code agent incorrect' }, 401)
+  await ensureSchema(env.DB)
+  const id = decodeURIComponent(url.pathname.split('/')[2] ?? '')
+
+  if (request.method === 'GET' && !id) {
+    const { results } = await env.DB.prepare('SELECT data, updated_at FROM agents ORDER BY created_at').all()
+    return json({ agents: results.map((r) => ({ ...JSON.parse(r.data), lastSeen: new Date(r.updated_at).toISOString() })) })
+  }
+  if (!/^ag-[A-Za-z0-9]{4,40}$/.test(id)) return json({ error: 'Agent invalide' }, 400)
+
+  if (request.method === 'PUT') {
+    const body = await request.json().catch(() => null)
+    const a = body?.agent
+    if (!a || a.id !== id || typeof a.name !== 'string' || !a.name.trim()) return json({ error: 'Agent invalide' }, 400)
+    const clean = { id }
+    for (const k of AGENT_FIELDS) if (a[k] !== undefined) clean[k] = a[k]
+    const data = JSON.stringify(clean)
+    if (data.length > 20_000) return json({ error: 'Profil trop volumineux' }, 413)
+    const now = Date.now()
+    await env.DB.prepare('INSERT INTO agents (id, data, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at')
+      .bind(id, data, now, now).run()
+    return json({ ok: true })
+  }
+  if (request.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM agents WHERE id = ?').bind(id).run()
+    return json({ ok: true })
   }
   return json({ error: 'Méthode non autorisée' }, 405)
 }

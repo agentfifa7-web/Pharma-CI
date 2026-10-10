@@ -193,6 +193,8 @@ export type Agent = {
   rating: number
   completed: number
   earnings: number
+  /** Dernière connexion connue au service (agents enregistrés). */
+  lastSeen?: string
 }
 
 export type FamilyProfile = {

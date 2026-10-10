@@ -51,6 +51,7 @@ export default function AgentMission() {
   }
 
   const isMine = m.agentId === currentAgentId
+  const me = agents.find((a) => a.id === currentAgentId)
   const route: LatLng[] | undefined = m.status === 'en_route' && m.agentPosition ? [m.agentPosition, m.deliveryPosition] : undefined
 
   return (
@@ -77,7 +78,11 @@ export default function AgentMission() {
           {m.status === 'payee' && (m.remote ? (
             <ActionCard step="Nouvelle mission" title="Acceptez-vous cette mission ?" icon={<ClipboardCheck size={18} />}>
               <p className="text-sm text-slate-600">Livraison à <b>{m.deliveryAddress}</b>. Budget médicaments estimé : <b>{fcfa(m.estimate.medications)}</b>.</p>
-              <Button size="lg" variant="accent" className="mt-3 w-full" onClick={() => acceptMission(m.id)}><Check size={18} /> Accepter la mission</Button>
+              {me ? (
+                <Button size="lg" variant="accent" className="mt-3 w-full" onClick={() => acceptMission(m.id)}><Check size={18} /> Accepter la mission</Button>
+              ) : (
+                <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Pour accepter, enregistrez d'abord votre nom et votre téléphone dans le <Link to="/agent" className="font-bold underline">tableau de bord</Link>.</p>
+              )}
               <p className="mt-2 text-center text-xs text-slate-500">Si un autre agent l'accepte avant vous, elle disparaîtra de votre liste.</p>
             </ActionCard>
           ) : (
