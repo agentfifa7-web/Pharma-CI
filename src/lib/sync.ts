@@ -1,4 +1,4 @@
-import type { Agent, Mission } from '../types'
+import type { Agent, InsurerPartner, Mission } from '../types'
 import { SERVICE_URL } from '../data/extraction'
 
 /**
@@ -139,5 +139,34 @@ export async function checkAdminCode(code: string): Promise<{ ok: true } | { ok:
     return { ok: false, status, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
   } catch {
     return { ok: false, status: 0, error: 'Pas de connexion' }
+  }
+}
+
+/** Assureurs partenaires (lecture publique). */
+export async function listPartners(): Promise<{ partners: InsurerPartner[] } | { error: string; status: number }> {
+  if (!SERVICE_URL) return { status: 503, error: "Le service PHARMA CI n'est pas configuré sur ce site." }
+  try {
+    const { status, body } = await call('/partners', {})
+    if (status === 200 && Array.isArray(body.partners)) return { partners: body.partners as InsurerPartner[] }
+    if (status === 200) return { status: 502, error: 'Le service PHARMA CI doit être mis à jour (version 10).' }
+    return { status, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
+  } catch {
+    return { status: 0, error: 'Pas de connexion' }
+  }
+}
+
+/** Enregistre ou retire un assureur partenaire (code administrateur). */
+export async function savePartner(partner: InsurerPartner, adminCode: string, remove = false): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { updatedAt: _u, ...data } = partner
+    const init: RequestInit = remove
+      ? { method: 'DELETE', headers: { 'X-Admin-Code': adminCode } }
+      : { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Admin-Code': adminCode }, body: JSON.stringify({ partner: data }) }
+    const { status, body } = await call(`/partners/${encodeURIComponent(partner.id)}`, init)
+    if (status === 200 && body.ok === true) return { ok: true }
+    if (status === 200 || status === 404 || status === 405) return { ok: false, error: 'Le service PHARMA CI doit être mis à jour (version 10).' }
+    return { ok: false, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
+  } catch {
+    return { ok: false, error: 'Pas de connexion' }
   }
 }

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
-  Agent, FamilyProfile, FraudEvent, Invoice, LatLng, Mission, MissionStatus, Prescription,
+  Agent, FamilyProfile, FraudEvent, InsurerPartner, Invoice, LatLng, Mission, MissionStatus, Prescription,
   PrescriptionLine, PrescriptionStatus, Rating, Treatment, UserInsurance, VigilanceReport,
 } from '../types'
 import { PHARMACIES } from '../data/pharmacies'
@@ -61,6 +61,8 @@ type State = {
   lastSync?: string
   /** Code de l'administratrice (vérifié par le service) : seul ce téléphone voit l'espace Admin. */
   adminCode: string
+  /** Assureurs partenaires (copie du service, gardée pour l'affichage hors connexion). */
+  partners: InsurerPartner[]
   treatments: Treatment[]
   reports: VigilanceReport[]
   fraud: FraudEvent[]
@@ -113,6 +115,7 @@ type State = {
   setAgentAvailability: (id: string, available: boolean) => void
   setAgentCode: (code: string) => void
   setAdminCode: (code: string) => void
+  setPartners: (partners: InsurerPartner[]) => void
   setAgentSyncError: (error?: string) => void
   setLastSync: (at: string) => void
   saveAgentProfile: (p: Pick<Agent, 'name' | 'phone' | 'zone' | 'vehicle'>) => void
@@ -155,6 +158,7 @@ const initial = () => ({
   agentCode: '',
   agentSyncError: undefined as string | undefined,
   adminCode: '',
+  partners: [] as InsurerPartner[],
   treatments: [] as Treatment[],
   reports: [] as VigilanceReport[],
   fraud: [] as FraudEvent[],
@@ -499,6 +503,7 @@ export const useStore = create<State>()(
         setAgentCode: (agentCode) => set({ agentCode: agentCode.trim(), agentSyncError: undefined }),
         setAgentSyncError: (agentSyncError) => set({ agentSyncError }),
         setAdminCode: (adminCode) => set({ adminCode: adminCode.trim() }),
+        setPartners: (partners) => set({ partners }),
         setLastSync: (lastSync) => set({ lastSync }),
         saveAgentProfile: (p) => {
           const current = get().agents.find((a) => a.id === get().currentAgentId)

@@ -306,6 +306,7 @@ export function AdminLayout() {
         { to: '/admin/ordonnances', label: 'Ordonnances', icon: <FileText size={16} /> },
         { to: '/admin/agents', label: 'Agents', icon: <Bike size={16} /> },
         { to: '/admin/pharmacies', label: 'Pharmacies', icon: <MapPin size={16} /> },
+        { to: '/admin/assurances', label: 'Assurances', icon: <Shield size={16} /> },
         { to: '/admin/fraude', label: 'Anti-fraude', icon: <ShieldAlert size={16} /> },
         { to: '/admin/data', label: 'PHARMA DATA', icon: <BarChart3 size={16} /> },
         { to: '/admin/contenus', label: 'Contenus', icon: <Newspaper size={16} /> },

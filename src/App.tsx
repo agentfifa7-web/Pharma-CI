@@ -49,6 +49,7 @@ const AdminPharmacies = lazy(() => import('./pages/admin/AdminPharmacies'))
 const AdminFraud = lazy(() => import('./pages/admin/AdminFraud'))
 const AdminData = lazy(() => import('./pages/admin/AdminData'))
 const AdminContent = lazy(() => import('./pages/admin/AdminContent'))
+const AdminInsurers = lazy(() => import('./pages/admin/AdminInsurers'))
 const AdminSecurity = lazy(() => import('./pages/admin/AdminSecurity'))
 
 export default function App() {
@@ -106,6 +107,7 @@ export default function App() {
           <Route path="fraude" element={<AdminFraud />} />
           <Route path="data" element={<AdminData />} />
           <Route path="contenus" element={<AdminContent />} />
+          <Route path="assurances" element={<AdminInsurers />} />
           <Route path="securite" element={<AdminSecurity />} />
         </Route>
       </Routes>
