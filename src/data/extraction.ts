@@ -73,7 +73,7 @@ const toBase64 = (file: Blob) =>
     r.readAsDataURL(file)
   })
 
-/** Délai maximal d'attente du service (le service lui-même abandonne à 55 s). */
+/** Délai maximal d'attente du service (le service lui-même abandonne à 50 s). */
 const AI_TIMEOUT_MS = 70_000
 
 class AiError extends Error {
@@ -126,8 +126,9 @@ async function readWithAi(files: File[], onProgress?: (p: number, status: string
     try {
       items = await callAi(payload)
     } catch (e) {
-      // Une seule nouvelle tentative, et seulement pour une coupure réseau ou un service momentanément indisponible.
-      if (!(e instanceof AiError) || !e.retry) throw e
+      // Une seule nouvelle tentative, et seulement pour un échec rapide (coupure réseau, service momentanément indisponible) :
+      // le service essaie déjà lui-même plusieurs modèles, relancer après une longue attente ne ferait que doubler l'attente.
+      if (!(e instanceof AiError) || !e.retry || Date.now() - t0 > 20_000) throw e
       report(0.5, 'Nouvel essai de lecture')
       items = await callAi(payload)
     }

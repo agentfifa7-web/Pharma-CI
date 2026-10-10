@@ -17,14 +17,20 @@
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 2
+const VERSION = 3
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
-// Modèles essayés dans l'ordre : si l'un est saturé (429/503), trop lent ou indisponible, on passe au suivant.
-const FALLBACK_MODELS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite']
-const ATTEMPT_TIMEOUT_MS = 25_000 // durée maximale d'un essai
-const TOTAL_BUDGET_MS = 55_000 // durée maximale de la lecture complète (le site abandonne à 70 s)
+// Modèles utilisés : le principal (meilleure lecture de l'écriture manuscrite) et un modèle de secours très rapide.
+// Les modèles 2.5 ne sont plus ouverts aux nouvelles clés (erreur 404), ils ne sont donc plus utilisés.
+// « thinking » : réglages de réflexion essayés dans l'ordre (le suivant si le modèle refuse le réglage ; null = aucun réglage).
+const PLAN = [
+  { model: 'gemini-flash-latest', thinking: [{ thinkingLevel: 'low' }, { thinkingBudget: 1024 }, null] },
+  { model: 'gemini-flash-lite-latest', thinking: [null] },
+]
+const BACKUP_START_MS = 8_000 // le modèle de secours démarre si le principal n'a pas encore répondu
+const GRACE_MS = 6_000 // si le secours répond d'abord, on attend encore un peu la lecture du modèle principal
+const TOTAL_BUDGET_MS = 50_000 // durée maximale de la lecture complète (le site abandonne à 70 s)
 
 const PROMPT = `Tu es un assistant de pharmacie en Côte d'Ivoire. On te montre la photo d'une ordonnance médicale
 (souvent manuscrite, parfois floue, de travers ou mal éclairée). Relève UNIQUEMENT les médicaments prescrits,
@@ -91,8 +97,9 @@ export default {
       const info = { ok: true, service: 'PHARMA CI — lecture des ordonnances', version: VERSION, configured: !!env.GEMINI_API_KEY }
       // https://…workers.dev/?diagnostic : vérifie la clé et la disponibilité de chaque modèle (petite question texte).
       if (new URL(request.url).searchParams.has('diagnostic') && env.GEMINI_API_KEY) {
-        const models = [...new Set([env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean))]
-        info.models = await Promise.all(models.map((m) => ping(env.GEMINI_API_KEY, m)))
+        const [models, available] = await Promise.all([Promise.all(plan(env).map((spec) => ping(env.GEMINI_API_KEY, spec))), listFlashModels(env.GEMINI_API_KEY)])
+        info.models = models
+        info.available = available
       }
       return json(info)
     }
@@ -114,14 +121,18 @@ export default {
     }
     if (total > MAX_BYTES) return json({ error: 'Fichiers trop volumineux' }, 413)
 
-    const models = [...new Set([env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean))]
-    const result = await readWithGemini(env.GEMINI_API_KEY, models, files)
+    const result = await readWithGemini(env.GEMINI_API_KEY, plan(env), files)
     if (result.lines) return json({ lines: result.lines, model: result.model, attempts: result.attempts })
     return json({ error: result.error, attempts: result.attempts }, result.status ?? 502)
   },
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const API = 'https://generativelanguage.googleapis.com/v1beta'
+
+/** Liste des modèles : GEMINI_MODEL (facultatif) remplace le modèle principal. */
+function plan(env) {
+  return env.GEMINI_MODEL ? [{ ...PLAN[0], model: env.GEMINI_MODEL }, ...PLAN.slice(1).filter((p) => p.model !== env.GEMINI_MODEL)] : PLAN
+}
 
 /** Extrait l'objet JSON de la réponse du modèle (tolère un texte autour ou des balises ```json). */
 function parseLines(text) {
@@ -139,73 +150,135 @@ function parseLines(text) {
 }
 
 /**
- * Interroge Gemini avec reprise automatique : chaque essai est limité dans le temps, et en cas de saturation
- * (429, 500, 503), de délai dépassé ou de réponse illisible, le modèle suivant de la liste est essayé.
+ * Essaie un modèle, avec ses réglages de réflexion dans l'ordre (le suivant si Gemini refuse le réglage).
+ * Renvoie { lines, model } ou { error, fatal? }.
  */
-async function readWithGemini(apiKey, models, files) {
-  const started = Date.now()
-  const attempts = []
-  const parts = [...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: PROMPT }]
-  let lastError = 'Service de lecture indisponible'
-
-  for (const model of models) {
-    // Premier essai avec une réflexion du modèle limitée (plus rapide et plus régulier) ; sans ce réglage si le modèle le refuse.
-    for (const fast of [true, false]) {
-      const left = TOTAL_BUDGET_MS - (Date.now() - started)
-      if (left < 4_000) return { error: 'La lecture a pris trop de temps', status: 504, attempts }
-      const generationConfig = { temperature: 0, responseMimeType: 'application/json', responseSchema: SCHEMA, maxOutputTokens: 4096 }
-      if (fast) generationConfig.thinkingConfig = { thinkingBudget: 1024 }
-      const t0 = Date.now()
-      let res
-      try {
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-          body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig }),
-          signal: AbortSignal.timeout(Math.min(ATTEMPT_TIMEOUT_MS, left)),
-        })
-      } catch (e) {
-        attempts.push({ model, fast, ms: Date.now() - t0, error: e?.name === 'TimeoutError' ? 'délai dépassé' : 'réseau' })
-        lastError = 'Le service de lecture ne répond pas'
-        break // modèle suivant
-      }
-      const entry = { model, fast, ms: Date.now() - t0, status: res.status }
-      attempts.push(entry)
-      if (res.ok) {
-        const data = await res.json().catch(() => null)
-        const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
-        const lines = parseLines(text)
-        if (lines) return { lines, model, attempts }
-        entry.error = `réponse illisible (${data?.candidates?.[0]?.finishReason ?? 'vide'})`
-        lastError = 'Réponse illisible du service de lecture'
-        break
-      }
-      const detail = (await res.text().catch(() => '')).slice(0, 200)
-      entry.error = detail
-      if (res.status === 400 && fast && /think/i.test(detail)) continue // réessayer ce modèle sans le réglage « rapide »
-      if (res.status === 401 || res.status === 403) return { error: 'Clé GEMINI_API_KEY refusée par Google', status: 502, attempts }
-      if (res.status === 429) lastError = 'Quota de lecture atteint, réessayez dans une minute'
-      else if (res.status === 404) lastError = 'Modèle de lecture introuvable'
-      else lastError = `Service de lecture indisponible (${res.status})`
-      if (res.status === 429 || res.status >= 500) await sleep(800)
-      break // modèle suivant
+async function tryModel(apiKey, spec, parts, signal, attempts) {
+  for (const thinking of spec.thinking) {
+    const generationConfig = { temperature: 0, responseMimeType: 'application/json', responseSchema: SCHEMA, maxOutputTokens: 8192 }
+    if (thinking) generationConfig.thinkingConfig = thinking
+    const entry = { model: spec.model, reflexion: thinking ? Object.values(thinking)[0] : 'défaut' }
+    attempts.push(entry)
+    const t0 = Date.now()
+    let res
+    try {
+      res = await fetch(`${API}/models/${encodeURIComponent(spec.model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig }),
+        signal,
+      })
+    } catch {
+      entry.ms = Date.now() - t0
+      entry.error = signal.aborted ? 'interrompu (délai dépassé ou autre modèle plus rapide)' : 'réseau'
+      return { error: 'Le service de lecture ne répond pas' }
     }
+    entry.ms = Date.now() - t0
+    entry.status = res.status
+    if (res.ok) {
+      const data = await res.json().catch(() => null)
+      const text = data?.candidates?.[0]?.content?.parts?.filter((p) => !p.thought).map((p) => p.text ?? '').join('') ?? ''
+      const lines = parseLines(text)
+      if (lines) return { lines, model: spec.model }
+      entry.error = `réponse illisible (${data?.candidates?.[0]?.finishReason ?? 'vide'})`
+      return { error: 'Réponse illisible du service de lecture' }
+    }
+    const detail = (await res.text().catch(() => '')).slice(0, 300)
+    entry.error = detail
+    if (res.status === 400 && thinking && /think/i.test(detail)) continue // réglage refusé : essayer le suivant
+    if (res.status === 401 || res.status === 403) return { error: 'Clé GEMINI_API_KEY refusée par Google', fatal: true }
+    if (res.status === 429) return { error: 'Quota de lecture atteint, réessayez dans une minute' }
+    if (res.status === 404) return { error: 'Modèle de lecture introuvable' }
+    return { error: `Service de lecture indisponible (${res.status})` }
   }
-  return { error: lastError, status: 502, attempts }
+  return { error: 'Modèle de lecture incompatible' }
 }
 
-/** Petite requête texte pour vérifier qu'un modèle répond avec cette clé (diagnostic). */
-async function ping(apiKey, model) {
+/**
+ * Lecture « en relais » : le modèle principal démarre seul ; s'il n'a pas répondu après BACKUP_START_MS (ou s'il échoue),
+ * le modèle de secours démarre aussi. La lecture du modèle principal est préférée, mais si le secours répond d'abord,
+ * on n'attend le principal que GRACE_MS de plus. La lecture complète ne dépasse jamais TOTAL_BUDGET_MS.
+ */
+function readWithGemini(apiKey, models, files) {
+  const parts = [...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: PROMPT }]
+  return race(models, (spec, signal, attempts) => tryModel(apiKey, spec, parts, signal, attempts))
+}
+
+function race(models, run) {
+  const started = Date.now()
+  const attempts = []
+  const runs = models.map((spec) => ({ spec, ctrl: new AbortController(), started: false, result: null }))
+  const timers = []
+  return new Promise((resolve) => {
+    let finished = false
+    let grace = null
+    const finish = (out) => {
+      if (finished) return
+      finished = true
+      timers.forEach(clearTimeout)
+      clearTimeout(grace)
+      runs.forEach((r) => r.ctrl.abort())
+      resolve({ ...out, attempts })
+    }
+    const best = () => runs.find((r) => r.result?.lines)
+    const launch = (i) => {
+      const r = runs[i]
+      if (!r || r.started || finished || Date.now() - started > TOTAL_BUDGET_MS - 4_000) return
+      r.started = true
+      run(r.spec, r.ctrl.signal, attempts).then((res) => {
+        r.result = res
+        settle()
+      })
+    }
+    const settle = () => {
+      const fatal = runs.find((r) => r.result?.fatal)
+      if (fatal) return finish({ error: fatal.result.error, status: 502 })
+      const win = best()
+      if (win) {
+        // Un modèle mieux placé est encore en train de lire : lui laisser un court délai.
+        const pendingBefore = runs.slice(0, runs.indexOf(win)).some((r) => r.started && !r.result)
+        if (!pendingBefore) return finish({ lines: win.result.lines, model: win.spec.model })
+        grace ??= setTimeout(() => finish({ lines: best().result.lines, model: best().spec.model }), GRACE_MS)
+        return
+      }
+      // Pas encore de lecture réussie : démarrer le modèle suivant si l'un a échoué.
+      const next = runs.findIndex((r) => !r.started)
+      if (runs.some((r) => r.result) && next !== -1) launch(next)
+      if (runs.every((r) => !r.started || r.result) && !runs.some((r) => !r.started && Date.now() - started <= TOTAL_BUDGET_MS - 4_000)) {
+        const last = [...runs].reverse().find((r) => r.result)
+        finish({ error: last?.result.error ?? 'La lecture a pris trop de temps', status: 502 })
+      }
+    }
+    launch(0)
+    runs.slice(1).forEach((_, k) => timers.push(setTimeout(() => launch(k + 1), BACKUP_START_MS * (k + 1))))
+    timers.push(setTimeout(() => {
+      runs.forEach((r) => r.ctrl.abort())
+      if (!best()) finish({ error: 'La lecture a pris trop de temps', status: 504 })
+    }, TOTAL_BUDGET_MS))
+  })
+}
+
+/** Petite lecture sans image, avec les mêmes réglages que les vraies lectures (diagnostic). */
+async function ping(apiKey, spec) {
+  const attempts = []
   const t0 = Date.now()
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 25_000)
+  const res = await tryModel(apiKey, spec, [{ text: "Aucune ordonnance n'est jointe : renvoie une liste vide." }], ctrl.signal, attempts)
+  clearTimeout(timer)
+  return { model: spec.model, ok: !!res.lines, ms: Date.now() - t0, attempts }
+}
+
+/** Modèles « flash » ouverts à cette clé (diagnostic, pour choisir un autre modèle si besoin). */
+async function listFlashModels(apiKey) {
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Réponds seulement : OK' }] }], generationConfig: { maxOutputTokens: 20 } }),
-      signal: AbortSignal.timeout(15_000),
-    })
-    return { model, status: res.status, ms: Date.now() - t0, ...(res.ok ? {} : { error: (await res.text()).slice(0, 160) }) }
-  } catch (e) {
-    return { model, ms: Date.now() - t0, error: e?.name === 'TimeoutError' ? 'délai dépassé' : 'réseau' }
+    const res = await fetch(`${API}/models?pageSize=1000`, { headers: { 'x-goog-api-key': apiKey }, signal: AbortSignal.timeout(10_000) })
+    if (!res.ok) return `erreur ${res.status}`
+    const data = await res.json()
+    return (data.models ?? [])
+      .filter((m) => /flash/.test(m.name) && m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m) => m.name.replace('models/', ''))
+  } catch {
+    return 'indisponible'
   }
 }
