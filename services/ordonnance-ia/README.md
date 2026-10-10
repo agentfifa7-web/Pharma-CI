@@ -40,7 +40,7 @@ Après la publication, la page « Envoyer une ordonnance » lit les ordonnances 
 ## Mettre à jour le service
 Quand `worker.js` change dans ce dépôt, il faut recoller le code chez Cloudflare (la clé, elle, est conservée) :
 **Workers & Pages** → `ordonnance-ia` → **Edit code** → tout effacer → coller le nouveau `worker.js` → **Deploy**.
-L'adresse du service affiche alors le numéro de version (`"version":4`).
+L'adresse du service affiche alors le numéro de version (`"version":5`).
 
 ## Diagnostic
 Ouvrir `https://ordonnance-ia.agentfifa7.workers.dev/?diagnostic` : pour chaque modèle Gemini utilisé, la page fait une
@@ -49,10 +49,10 @@ millisecondes, ou l'erreur rencontrée (clé refusée, quota atteint, modèle in
 les modèles « flash » ouverts à la clé.
 
 ## Robustesse
-- Les modèles travaillent en relais : `gemini-3.8-flash` et `gemini-3.5-flash` (bonne lecture de l'écriture
-  manuscrite) démarrent ensemble ; `gemini-flash-lite-latest` (très rapide) démarre en secours après 8 s, ou dès que
-  les deux autres ont échoué. La lecture du modèle le mieux placé est préférée, mais on ne l'attend que 6 s de plus
-  quand un autre a déjà répondu. `gemini-flash-latest` n'est plus utilisé (il ne répondait pas au diagnostic).
+- Les modèles travaillent en relais : `gemini-3.5-flash` (bonne lecture de l'écriture manuscrite) démarre seul ;
+  `gemini-flash-lite-latest` (très rapide) démarre en secours après 10 s, ou dès que le premier a échoué. La lecture
+  du premier est préférée, mais on ne l'attend que 6 s de plus quand le secours a déjà répondu.
+  Choix fait d'après le diagnostic : `gemini-3.8-flash` et `gemini-flash-latest` ne répondaient pas.
 - Le réglage de réflexion du modèle est limité (plus rapide et plus régulier) ; s'il est refusé, le réglage suivant est essayé.
 - La lecture complète ne dépasse jamais 50 s. Côté site, l'attente est limitée à 70 s. En cas d'échec, un message clair
   s'affiche avec les boutons « Relancer la lecture » et « Reprendre la photo ».
