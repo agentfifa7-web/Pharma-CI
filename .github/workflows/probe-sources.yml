@@ -1,0 +1,23 @@
+name: Sondage des nouvelles sources (temporaire)
+
+on:
+  push:
+    branches: [claude/project-thread-cl34ak]
+    paths: [.github/workflows/probe-sources.yml, scripts/probe-sources.sh]
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/probe-sources.sh
+      - run: |
+          git config user.name "pharma-ci-bot"
+          git config user.email "pharma-ci-bot@users.noreply.github.com"
+          git add -f probe-out
+          git commit -m "Sondage des sources (fichiers bruts)" || exit 0
+          git push origin "HEAD:${GITHUB_REF_NAME}"
