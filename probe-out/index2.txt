@@ -1,0 +1,7 @@
+depps-espr.pdf 200 8725480 https://www.depps.sante.gouv.ci/DocPDF/DOCUMENTS%20DE%20R%C3%89F%C3%89RENCE/Liste%20des%20ESPr%20autoris%C3%A9s%20E-DEPPS%20Juin%202026.pdf
+depps-etabsante.html 200 35581 https://www.depps.sante.gouv.ci/Home/EtablissementSante
+depps-etab.html 200 43708 https://www.depps.sante.gouv.ci/Home/Etablissement
+airp-index.js 200 164987 https://airp.ci/assets/index-C-TjEq_r.js
+ordre-home.html 200 225337 https://ordrepharmacien.ci/
+sante-actu.html 200 704558 https://www.sante.gouv.ci/actualites
+osm-sante.json 200 696211
