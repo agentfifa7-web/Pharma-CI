@@ -17,19 +17,27 @@
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 3
+const VERSION = 4
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
-// Modèles utilisés : le principal (meilleure lecture de l'écriture manuscrite) et un modèle de secours très rapide.
-// Les modèles 2.5 ne sont plus ouverts aux nouvelles clés (erreur 404), ils ne sont donc plus utilisés.
+// Modèles utilisés, par ordre de préférence. « startMs » : moment où le modèle démarre. Les deux modèles « flash »
+// récents démarrent ensemble (si l'un est saturé, l'autre répond) ; le modèle « lite », très rapide mais moins précis
+// sur l'écriture manuscrite, démarre en secours après 8 s (ou dès que les autres ont échoué).
+// gemini-flash-latest n'est plus utilisé : au diagnostic du 10/10/2026, il ne répondait pas, même à une question simple.
 // « thinking » : réglages de réflexion essayés dans l'ordre (le suivant si le modèle refuse le réglage ; null = aucun réglage).
+const FAST_THINKING = [{ thinkingLevel: 'low' }, { thinkingBudget: 1024 }, null]
 const PLAN = [
-  { model: 'gemini-flash-latest', thinking: [{ thinkingLevel: 'low' }, { thinkingBudget: 1024 }, null] },
-  { model: 'gemini-flash-lite-latest', thinking: [null] },
+  { model: 'gemini-3.8-flash', startMs: 0, thinking: FAST_THINKING },
+  { model: 'gemini-3.5-flash', startMs: 0, thinking: FAST_THINKING },
+  { model: 'gemini-flash-lite-latest', startMs: 8_000, thinking: [null] },
 ]
-const BACKUP_START_MS = 8_000 // le modèle de secours démarre si le principal n'a pas encore répondu
-const GRACE_MS = 6_000 // si le secours répond d'abord, on attend encore un peu la lecture du modèle principal
+// Modèles testés en plus par le diagnostic, pour comparaison.
+const DIAGNOSTIC_EXTRA = [
+  { model: 'gemini-flash-latest', thinking: FAST_THINKING },
+  { model: 'gemini-3.1-flash-lite', thinking: [null] },
+]
+const GRACE_MS = 6_000 // si un modèle moins précis répond d'abord, on attend encore un peu les modèles préférés
 const TOTAL_BUDGET_MS = 50_000 // durée maximale de la lecture complète (le site abandonne à 70 s)
 
 const PROMPT = `Tu es un assistant de pharmacie en Côte d'Ivoire. On te montre la photo d'une ordonnance médicale
@@ -97,7 +105,8 @@ export default {
       const info = { ok: true, service: 'PHARMA CI — lecture des ordonnances', version: VERSION, configured: !!env.GEMINI_API_KEY }
       // https://…workers.dev/?diagnostic : vérifie la clé et la disponibilité de chaque modèle (petite question texte).
       if (new URL(request.url).searchParams.has('diagnostic') && env.GEMINI_API_KEY) {
-        const [models, available] = await Promise.all([Promise.all(plan(env).map((spec) => ping(env.GEMINI_API_KEY, spec))), listFlashModels(env.GEMINI_API_KEY)])
+        const specs = [...plan(env), ...DIAGNOSTIC_EXTRA.filter((d) => !plan(env).some((p) => p.model === d.model))]
+        const [models, available] = await Promise.all([Promise.all(specs.map((spec) => ping(env.GEMINI_API_KEY, spec))), listFlashModels(env.GEMINI_API_KEY)])
         info.models = models
         info.available = available
       }
@@ -129,9 +138,9 @@ export default {
 
 const API = 'https://generativelanguage.googleapis.com/v1beta'
 
-/** Liste des modèles : GEMINI_MODEL (facultatif) remplace le modèle principal. */
+/** Liste des modèles : GEMINI_MODEL (facultatif) est ajouté en tête, avec un démarrage immédiat. */
 function plan(env) {
-  return env.GEMINI_MODEL ? [{ ...PLAN[0], model: env.GEMINI_MODEL }, ...PLAN.slice(1).filter((p) => p.model !== env.GEMINI_MODEL)] : PLAN
+  return env.GEMINI_MODEL ? [{ model: env.GEMINI_MODEL, startMs: 0, thinking: FAST_THINKING }, ...PLAN.filter((p) => p.model !== env.GEMINI_MODEL)] : PLAN
 }
 
 /** Extrait l'objet JSON de la réponse du modèle (tolère un texte autour ou des balises ```json). */
@@ -195,9 +204,9 @@ async function tryModel(apiKey, spec, parts, signal, attempts) {
 }
 
 /**
- * Lecture « en relais » : le modèle principal démarre seul ; s'il n'a pas répondu après BACKUP_START_MS (ou s'il échoue),
- * le modèle de secours démarre aussi. La lecture du modèle principal est préférée, mais si le secours répond d'abord,
- * on n'attend le principal que GRACE_MS de plus. La lecture complète ne dépasse jamais TOTAL_BUDGET_MS.
+ * Lecture « en relais » : chaque modèle démarre à son « startMs » (ou plus tôt si tous les modèles lancés ont échoué).
+ * La lecture du modèle le mieux placé est préférée, mais si un modèle moins bien placé répond d'abord, on n'attend
+ * les autres que GRACE_MS de plus. La lecture complète ne dépasse jamais TOTAL_BUDGET_MS.
  */
 function readWithGemini(apiKey, models, files) {
   const parts = [...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: PROMPT }]
@@ -241,16 +250,15 @@ function race(models, run) {
         grace ??= setTimeout(() => finish({ lines: best().result.lines, model: best().spec.model }), GRACE_MS)
         return
       }
-      // Pas encore de lecture réussie : démarrer le modèle suivant si l'un a échoué.
+      // Pas encore de lecture réussie et plus aucun modèle en cours : démarrer le suivant sans attendre.
       const next = runs.findIndex((r) => !r.started)
-      if (runs.some((r) => r.result) && next !== -1) launch(next)
+      if (next !== -1 && !runs.some((r) => r.started && !r.result)) launch(next)
       if (runs.every((r) => !r.started || r.result) && !runs.some((r) => !r.started && Date.now() - started <= TOTAL_BUDGET_MS - 4_000)) {
         const last = [...runs].reverse().find((r) => r.result)
         finish({ error: last?.result.error ?? 'La lecture a pris trop de temps', status: 502 })
       }
     }
-    launch(0)
-    runs.slice(1).forEach((_, k) => timers.push(setTimeout(() => launch(k + 1), BACKUP_START_MS * (k + 1))))
+    runs.forEach((r, i) => (r.spec.startMs ? timers.push(setTimeout(() => launch(i), r.spec.startMs)) : launch(i)))
     timers.push(setTimeout(() => {
       runs.forEach((r) => r.ctrl.abort())
       if (!best()) finish({ error: 'La lecture a pris trop de temps', status: 504 })
