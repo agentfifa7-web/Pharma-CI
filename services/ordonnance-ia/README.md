@@ -14,7 +14,7 @@ Tant que ce service n'est pas configuré, le site continue d'utiliser l'ancienne
 ### 1. Créer la clé Gemini (Google)
 1. Ouvrir https://aistudio.google.com/apikey et se connecter avec un compte Google (Gmail).
 2. Accepter les conditions, puis cliquer **Create API key** (« Créer une clé API »).
-3. Copier la clé (elle commence par `AIza…`). Ne la publier nulle part.
+3. Copier la clé (elle commence par `AQ.` ou `AIza…`). Ne la publier nulle part.
 
 ### 2. Créer le service chez Cloudflare
 1. Ouvrir https://dash.cloudflare.com/sign-up et créer un compte gratuit (adresse e-mail + mot de passe).
@@ -40,18 +40,21 @@ Après la publication, la page « Envoyer une ordonnance » lit les ordonnances 
 ## Mettre à jour le service
 Quand `worker.js` change dans ce dépôt, il faut recoller le code chez Cloudflare (la clé, elle, est conservée) :
 **Workers & Pages** → `ordonnance-ia` → **Edit code** → tout effacer → coller le nouveau `worker.js` → **Deploy**.
-L'adresse du service affiche alors le numéro de version (`"version":2`).
+L'adresse du service affiche alors le numéro de version (`"version":3`).
 
 ## Diagnostic
-Ouvrir `https://ordonnance-ia.agentfifa7.workers.dev/?diagnostic` : pour chaque modèle Gemini, la page indique s'il
-répond avec la clé (`"status":200`), en combien de millisecondes, ou l'erreur rencontrée (clé refusée, quota atteint…).
+Ouvrir `https://ordonnance-ia.agentfifa7.workers.dev/?diagnostic` : pour chaque modèle Gemini utilisé, la page fait une
+petite lecture avec les mêmes réglages qu'une vraie ordonnance et indique si elle réussit (`"ok":true`), en combien de
+millisecondes, ou l'erreur rencontrée (clé refusée, quota atteint, modèle introuvable…). La rubrique `available` liste
+les modèles « flash » ouverts à la clé.
 
 ## Robustesse
-- Chaque essai auprès de Gemini est limité à 25 s, et la lecture complète à 55 s.
-- Si un modèle est saturé (429/503), trop lent ou renvoie une réponse illisible, le modèle suivant est essayé
-  (`gemini-flash-latest`, `gemini-2.5-flash`, `gemini-flash-lite-latest`, `gemini-2.5-flash-lite`).
-- Côté site, l'attente est limitée à 70 s, avec une nouvelle tentative en cas de coupure réseau. En cas d'échec,
-  un message clair s'affiche avec les boutons « Relancer la lecture » et « Reprendre la photo ».
+- Deux modèles travaillent en relais : `gemini-flash-latest` (meilleure lecture de l'écriture manuscrite) démarre seul ;
+  s'il n'a pas répondu au bout de 8 s, ou s'il échoue, `gemini-flash-lite-latest` (très rapide) démarre aussi.
+  La lecture du premier est préférée, mais on ne l'attend que 6 s de plus quand le second a déjà répondu.
+- Le réglage de réflexion du modèle est limité (plus rapide et plus régulier) ; s'il est refusé, le réglage suivant est essayé.
+- La lecture complète ne dépasse jamais 50 s. Côté site, l'attente est limitée à 70 s. En cas d'échec, un message clair
+  s'affiche avec les boutons « Relancer la lecture » et « Reprendre la photo ».
 
 ## Bon à savoir
 - **Coût** : l'offre gratuite de Gemini et celle de Cloudflare suffisent pour démarrer (limites de quelques
@@ -62,4 +65,4 @@ répond avec la clé (`"status":200`), en combien de millisecondes, ou l'erreur 
   site doit mentionner ce traitement.
 - **Qualité** : une photo nette, de face, bien éclairée et en taille originale (pas une miniature WhatsApp) donne
   le meilleur résultat. Le patient vérifie toujours chaque ligne avant de confirmer.
-- Le modèle utilisé peut être changé avec la variable `GEMINI_MODEL` (par défaut `gemini-flash-latest`).
+- Le modèle utilisé peut être changé avec la variable `GEMINI_MODEL` (par défaut `gemini-flash-latest`), par exemple avec un nom de la rubrique `available` du diagnostic.
