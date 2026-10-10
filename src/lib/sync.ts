@@ -126,3 +126,18 @@ export async function deleteAgent(id: string, agentCode: string): Promise<boolea
     return false
   }
 }
+
+/** Vérifie le code de l'administratrice auprès du service (secret ADMIN_CODE). */
+export async function checkAdminCode(code: string): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (!SERVICE_URL) return { ok: false, status: 503, error: "Le service PHARMA CI n'est pas configuré sur ce site." }
+  try {
+    const { status, body } = await call('/admin-check', { headers: { 'X-Admin-Code': code } })
+    if (status === 200 && body.admin === true) return { ok: true }
+    if (status === 200 || status === 404 || status === 405) {
+      return { ok: false, status: 502, error: 'Le service PHARMA CI doit être mis à jour (version 9) pour ouvrir l’espace Admin.' }
+    }
+    return { ok: false, status, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
+  } catch {
+    return { ok: false, status: 0, error: 'Pas de connexion' }
+  }
+}

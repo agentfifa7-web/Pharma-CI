@@ -59,6 +59,8 @@ type State = {
   agentSyncError?: string
   /** Dernière synchronisation réussie avec le service (code agent). */
   lastSync?: string
+  /** Code de l'administratrice (vérifié par le service) : seul ce téléphone voit l'espace Admin. */
+  adminCode: string
   treatments: Treatment[]
   reports: VigilanceReport[]
   fraud: FraudEvent[]
@@ -110,6 +112,7 @@ type State = {
   setCurrentAgent: (id: string) => void
   setAgentAvailability: (id: string, available: boolean) => void
   setAgentCode: (code: string) => void
+  setAdminCode: (code: string) => void
   setAgentSyncError: (error?: string) => void
   setLastSync: (at: string) => void
   saveAgentProfile: (p: Pick<Agent, 'name' | 'phone' | 'zone' | 'vehicle'>) => void
@@ -151,6 +154,7 @@ const initial = () => ({
   currentAgentId: '',
   agentCode: '',
   agentSyncError: undefined as string | undefined,
+  adminCode: '',
   treatments: [] as Treatment[],
   reports: [] as VigilanceReport[],
   fraud: [] as FraudEvent[],
@@ -494,6 +498,7 @@ export const useStore = create<State>()(
         },
         setAgentCode: (agentCode) => set({ agentCode: agentCode.trim(), agentSyncError: undefined }),
         setAgentSyncError: (agentSyncError) => set({ agentSyncError }),
+        setAdminCode: (adminCode) => set({ adminCode: adminCode.trim() }),
         setLastSync: (lastSync) => set({ lastSync }),
         saveAgentProfile: (p) => {
           const current = get().agents.find((a) => a.id === get().currentAgentId)

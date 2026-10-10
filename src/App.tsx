@@ -33,6 +33,7 @@ const Emergency = lazy(() => import('./pages/patient/Emergency'))
 const Family = lazy(() => import('./pages/patient/Family'))
 const Profile = lazy(() => import('./pages/patient/Profile'))
 const Notifications = lazy(() => import('./pages/patient/Notifications'))
+const Install = lazy(() => import('./pages/patient/Install'))
 const NotFound = lazy(() => import('./pages/patient/NotFound'))
 
 const AgentDashboard = lazy(() => import('./pages/agent/AgentDashboard'))
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="famille" element={<Family />} />
           <Route path="profil" element={<Profile />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="installer" element={<Install />} />
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="agent" element={<AgentLayout />}>
