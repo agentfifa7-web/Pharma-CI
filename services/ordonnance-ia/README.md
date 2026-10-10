@@ -28,6 +28,8 @@ Tant que ce service n'est pas configuré, le site continue d'utiliser l'ancienne
    En l'ouvrant dans le navigateur, on doit voir `"configured":true`.
 
 ### 3. Brancher le site sur le service
+Le service de PHARMA CI (`https://ordonnance-ia.agentfifa7.workers.dev`) est déjà inscrit dans
+`src/data/extraction.ts` (`ORDONNANCE_IA_URL`). Pour utiliser une autre adresse sans modifier le code :
 1. Sur GitHub, dépôt **Pharma-CI** → **Settings** → **Secrets and variables** → **Actions** → onglet **Variables**
    → **New repository variable**.
 2. Name : `ORDONNANCE_IA_URL` · Value : l'adresse copiée à l'étape 2.6 → **Add variable**.
