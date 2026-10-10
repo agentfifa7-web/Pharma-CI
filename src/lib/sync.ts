@@ -1,4 +1,4 @@
-import type { Mission } from '../types'
+import type { Agent, Mission } from '../types'
 import { SERVICE_URL } from '../data/extraction'
 
 /**
@@ -92,5 +92,35 @@ export async function listMissions(agentCode: string): Promise<{ missions: Missi
     return { status, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
   } catch {
     return { status: 0, error: 'Pas de connexion' }
+  }
+}
+
+/** Agents enregistrés sur le service (visibles des agents et de l'administration, avec le code agent). */
+export async function listAgents(agentCode: string): Promise<{ agents: Agent[] } | { error: string; status: number }> {
+  try {
+    const { status, body } = await call('/agents', { headers: headers({ agentCode }) })
+    if (status === 200) return { agents: (body.agents as Agent[]) ?? [] }
+    return { status, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
+  } catch {
+    return { status: 0, error: 'Pas de connexion' }
+  }
+}
+
+export async function saveAgent(agent: Agent, agentCode: string): Promise<boolean> {
+  try {
+    const { lastSeen: _l, activeMissions: _a, ...data } = agent
+    const { status } = await call(`/agents/${encodeURIComponent(agent.id)}`, { method: 'PUT', headers: headers({ agentCode }), body: JSON.stringify({ agent: data }) })
+    return status === 200
+  } catch {
+    return false
+  }
+}
+
+export async function deleteAgent(id: string, agentCode: string): Promise<boolean> {
+  try {
+    const { status } = await call(`/agents/${encodeURIComponent(id)}`, { method: 'DELETE', headers: headers({ agentCode }) })
+    return status === 200
+  } catch {
+    return false
   }
 }

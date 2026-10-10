@@ -38,6 +38,7 @@ export default function PrescriptionDetail() {
   const setUser = useStore((s) => s.setUser)
   const [method, setMethod] = useState(PAYMENT_METHODS[0]!.id)
   const [paying, setPaying] = useState(false)
+  const [payError, setPayError] = useState('')
   const [zoom, setZoom] = useState<string | null>(null)
   const [renewOpen, setRenewOpen] = useState(false)
 
@@ -66,19 +67,25 @@ export default function PrescriptionDetail() {
   const pay = async () => {
     if (!estimate || !address.trim() || !phone.trim()) return
     setPaying(true)
+    setPayError('')
     if (phone.trim() !== user.phone) setUser({ phone: phone.trim() })
-    // Mission partagée avec les agents si la base du service est activée (sinon : démonstration sur cet appareil).
-    const remote = await sharedMissionsAvailable()
-    const m = launchMission({
+    // La mission n'est lancée que si le service des agents l'a bien enregistrée : sinon aucun agent ne la verrait.
+    if (!(await sharedMissionsAvailable())) {
+      setPaying(false)
+      setPayError("Le service PHARMA CI ne répond pas. Vérifiez votre connexion internet puis réessayez : la mission n'a pas été lancée.")
+      return
+    }
+    const res = await launchMission({
       prescriptionId: p.id,
       estimate: { medications: estimate.medications, service: estimate.service, delivery: estimate.delivery, total: estimate.total },
       address: address.trim(),
       position: user.position,
       paymentMethod: method,
-      remote,
       patientPhone: phone.trim(),
     })
-    navigate(`/missions/${m.id}`)
+    setPaying(false)
+    if (!res.ok) return setPayError(`${res.error}. La mission n'a pas été lancée, réessayez.`)
+    navigate(`/missions/${res.mission.id}`)
   }
 
   const remove = () => {
@@ -238,8 +245,9 @@ export default function PrescriptionDetail() {
             </div>
 
             <Button size="lg" variant="accent" className="mt-4 w-full" onClick={() => void pay()} disabled={!address.trim() || !phone.trim() || paying}>
-              <Rocket size={18} /> PAYER ET LANCER LA MISSION
+              <Rocket size={18} /> {paying ? 'ENVOI AUX AGENTS…' : 'PAYER ET LANCER LA MISSION'}
             </Button>
+            {payError && <p role="alert" className="mt-2 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{payError}</p>}
             <p className="mt-2 text-center text-xs text-slate-500">Un agent PHARMA CI prend la mission et peut vous appeler en cas de souci. Votre ordonnance sera verrouillée pendant la mission.</p>
           </Card>
         </Section>

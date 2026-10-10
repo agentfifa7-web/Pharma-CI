@@ -7,6 +7,7 @@ import { FRAUD_PRICE_GAP } from '../../lib/pricing'
 import { dateTimeFr, fcfa } from '../../lib/format'
 import { Badge, Button, Chips, Notice, PageHeader, Stat, cx } from '../../components/ui'
 import type { Mission, MissionStatus } from '../../types'
+import ServiceAccess from '../../components/ServiceAccess'
 import { DataTable, Panel, Td } from './adminKit'
 
 type Filter = 'toutes' | 'actives' | MissionStatus
@@ -49,6 +50,7 @@ export default function AdminMissions() {
   return (
     <div>
       <PageHeader title="Missions" subtitle={`${missions.length} mission(s) au total`} icon={<Truck />} />
+      <ServiceAccess />
 
       <div className="mb-4">
         <Chips<Filter>

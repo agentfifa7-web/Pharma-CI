@@ -7,6 +7,7 @@ import { MISSION_TONE, missionAgent } from '../../data/statusUi'
 import { fcfa, relativeFr } from '../../lib/format'
 import MapView, { type MapMarker } from '../../components/MapView'
 import { Badge, PageHeader, Stat, cx } from '../../components/ui'
+import ServiceAccess from '../../components/ServiceAccess'
 import { DataTable, Panel, Td } from './adminKit'
 
 const SEVERITY_TONE = { faible: 'slate', moyenne: 'orange', elevee: 'red' } as const
@@ -65,6 +66,7 @@ export default function AdminDashboard() {
   return (
     <div>
       <PageHeader title="Command Center" subtitle="Vue d'ensemble en temps réel de l'activité PHARMA CI" icon={<LayoutDashboard />} />
+      <ServiceAccess />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Missions actives" value={k.active.length} icon={<Activity size={20} />} tone="accent" />
