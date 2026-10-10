@@ -1,0 +1,1757 @@
+<head>
+    <style>
+        #page_404 {
+            position: relative;
+            width: 100%;
+            padding: 0px;
+            background-color: rgba(241, 241, 241, 0.2);
+            margin: 25px auto;
+            margin: 25px auto;
+        }
+
+        #page_404 section {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #fff;
+            color: #0f172a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: auto;
+            text-align: left;
+            background-color: rgba(231, 234, 229, 0.1);
+
+            padding-top: 100px;
+            padding-bottom: 100px;
+        }
+
+        #page_404 section .container {
+            max-width: 760px;
+            padding: 75px 50px;
+            color: rgb(161, 161, 161) !important;
+            border: 1px solid var(--vert-drapeau);
+            border-radius: 15px;
+            background-color: var(--blanc);
+            margin: auto;
+            display: flex;
+
+            flex-direction: column;
+            align-content: center;
+            align-items: center;
+        }
+
+        #page_404 section h1 {
+            font-size: 60px;
+            font-weight: 900;
+            margin: 0;
+            margin-bottom: 10px !important;
+            margin-top: -15px !important;
+            color: var(--noir);
+        }
+
+        #page_404 section p {
+            font-size: 20px;
+            margin: 0;
+            color: rgb(82, 82, 82);
+            text-align: left;
+        }
+
+        #page_404 section a {
+            background-color: rgb(158, 158, 158);
+            color: white;
+            transition: ease-in all 0.3s;
+            border: 1px solid rgba(193, 199, 189, 0.00);
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 0px;
+            margin-top: 15px;
+        }
+
+        #page_404 section a:hover {
+            background-color: var(--vert-drapeau);
+        }
+
+        .search-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .icon svg {
+            vertical-align: middle;
+        }
+
+
+        @media screen and (max-width: 768px) {
+            #page_404 section .container {
+                max-width: 90%;
+                width: 90%;
+                padding: 50px 25px;
+                color: rgb(161, 161, 161) !important;
+
+                border: 1px solid var(--vert-drapeau);
+                border-radius: 15px;
+                background-color: var(--blanc);
+                margin: auto;
+            }
+
+            #page_404 section h1 {
+                font-size: 22px;
+                font-weight: 600;
+                margin: 0;
+                margin-bottom: 20px !important;
+                margin-top: -15px !important;
+            }
+
+            #page_404 section p {
+                font-size: 14px;
+                margin: 0;
+                color: gray;
+                text-align: justify;
+            }
+
+            #page_404 section a {
+                background-color: rgb(158, 158, 158);
+                color: white;
+                transition: ease-in all 0.3s;
+                border: 1px solid rgba(193, 199, 189, 0.00);
+                font-size: 14px;
+                border-radius: 30px;
+                margin-top: 10px
+            }
+
+        }
+    </style>
+</head>
+
+
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ministère de la Santé, de l&#039;Hygiène Publique et de la Couverture Maladie Universelle :: 404 - Page introuvable</title>
+
+    <link rel="icon" type="image/png" href="https://www.sante.gouv.ci/images/android-icon-36x36.png">
+    <link rel="icon" type="image/png" href="https://www.sante.gouv.ci/images/apple-icon-48x48.png">
+    <link rel="icon" type="image/png" href="https://www.sante.gouv.ci/images/apple-icon-192x192.png">
+
+    <link rel="icon" type="image/png" href="https://www.sante.gouv.ci/images/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" href="https://www.sante.gouv.ci/images/apple-icon-57x57.png">
+    <link rel="icon" type="image/png" href="https://www.sante.gouv.ci/images/apple-icon-60x60.png">
+    <link rel="icon" type="image/png" href="https://www.sante.gouv.ci/images/apple-icon-72x72.png">
+    <link rel="icon" type="image/png" href="https://www.sante.gouv.ci/images/apple-icon-76x76.png">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EF3YVVKXKE"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+
+        function gtag() {
+            dataLayer.push(arguments);
+        }
+        gtag('js', new Date());
+
+        gtag('config', 'G-EF3YVVKXKE');
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"
+        integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/pop_up_facebook.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/contexte.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/actualites.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/agenda.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/anciens_ministres.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/cabinet.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/details_article.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/front_pagination.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/dossiers.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/dossiers_liste.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/ecrire.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/footer.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/menu_dropdown.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/navbar.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/navigation.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/galerie.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/le_ministre.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/photos_liste.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/section_une.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/section_e_services.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/section_multiple_slides.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/section_grands_dossiers.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/section_chiffres_cles.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/mega_banner.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/videos.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/videos_liste.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/gouv_audios.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/services.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/structures.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/publications.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/ministere_item.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/section_page_secondaire.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/gouv_publications.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/page_flashs.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/mentions.css">
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/courier_en_ligne.css">
+
+
+
+    <script src="https://www.sante.gouv.ci/assets/libs_js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.sante.gouv.ci/assets/libs_js/jquery.slim.min.js"></script>
+    <script src="https://www.sante.gouv.ci/assets/libs_js/popper.min.js"></script>
+    <script src="https://www.sante.gouv.ci/assets/libs_js/jquery.min.js"></script>
+    <script src="https://www.sante.gouv.ci/assets/libs_js/owl.carousel.min.js"></script>
+
+    <!-- fontawesome version v6.4.2 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css"
+        integrity="sha512-W/zrbCncQnky/EzL+/AYwTtosvrM+YG/V6piQLSe2HuKS6cmbw89kjYkp3tWFn1dkWV7L1ruvJyKbLz73Vlgfg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/all.min.js"
+        integrity="sha512-uKQ39gEGiyUJl4AI6L+ekBdGKpGw4xJ55+xyJG7YFlJokPNYegn9KwQ3P8A7aFQAUtUsAQHep+d/lrGqrbPIDQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/fontawesome.min.js"
+        integrity="sha512-64O4TSvYybbO2u06YzKDmZfLj/Tcr9+oorWhxzE3yDnmBRf7wvDgQweCzUf5pm2xYTgHMMyk5tW8kWU92JENng=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/libs_css/jquery.fancybox.css" />
+    <link rel="stylesheet" href="https://www.sante.gouv.ci/assets/libs_css/ui_dist_fancybox.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.css">
+    <script src="https://www.sante.gouv.ci/assets/libs_js/fancybox.js"></script>
+    <script src="https://www.sante.gouv.ci/assets/libs_js/jquery.fancybox.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js"></script>
+
+    
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(to top, #40a437, rgba(221, 255, 221, 0.9));
+        }
+
+        #main_page {
+            position: relative;
+            width: 1300px;
+            margin: auto;
+            margin-top: 250px;
+            padding: 25px;
+            padding-bottom: 0px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+            z-index: 1;
+        }
+
+        #dark-mode-button {
+            position: fixed;
+            top: 25px;
+            right: 5px;
+            z-index: 1000000000;
+        }
+
+        #dark-mode-button .checkbox {
+            opacity: 0;
+            position: absolute;
+        }
+
+        #dark-mode-button .checkbox-label {
+            background-color: var(--vert);
+            width: 45px;
+            height: 25px;
+            border-radius: 50px;
+            position: relative;
+            padding: 5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #dark-mode-button .fa-moon {
+            color: #f1c40f;
+        }
+
+        #dark-mode-button .fa-sun {
+            color: #f39c12;
+        }
+
+        #dark-mode-button .checkbox-label .ball {
+            background-color: #fff;
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            left: 2px;
+            top: 2px;
+            border-radius: 50%;
+            transition: transform 0.2s linear;
+        }
+
+        #dark-mode-button .checkbox:checked+.checkbox-label .ball {
+            transform: translateX(22px);
+        }
+
+        body.dark-mode,
+        body.dark-mode #main_page {
+            background-color: #131313 !important;
+        }
+
+        body.dark-mode h1 body.dark-mode h2,
+        body.dark-mode h3,
+        body.dark-mode h4,
+        body.dark-mode div,
+        body.dark-mode p,
+        {
+        color: yellow !important;
+        }
+
+        .dark-mode #dark-mode-button .checkbox-label {
+            background-color: #111;
+        }
+
+        .no-copy {
+            -webkit-user-select: none;
+            /* Safari */
+            -ms-user-select: none;
+            /* IE 10+ */
+            user-select: none;
+            /* Standard */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="dark-mode-button">
+        <div>
+            <input type="checkbox" class="checkbox" id="checkbox">
+            <label for="checkbox" class="checkbox-label">
+                <i class="fas fa-moon"></i>
+                <i class="fas fa-sun"></i>
+                <span class="ball"></span>
+            </label>
+        </div>
+    </div>
+    <head>
+    <script>
+        $(document).ready(function(){
+    
+                $('.facebook-popup').click(function(event) { 
+                    
+                    $(this).toggleClass('active').siblings().removeClass('active');
+                    var url_video = $('.facebook-popup.active iframe').attr('src'); //récupération de l'url de la vidéo sur laquelle on a cliqué
+                    
+                    $('#facebook_popup .video iframe').attr('src', url_video); //Passage de l'url à l'iframe de la fenêtre popup
+        
+                    $('#facebook_popup').toggleClass('active'); //Affichade la fenêtre popup
+                });
+    
+                $('#facebook_popup').click(function(event) {
+                    $('#facebook_popup .video iframe').attr('src', '');
+                    $('#facebook_popup').removeClass('active');
+                });
+            }); 
+    </script>
+
+</head>
+
+
+<div id="facebook_popup">
+    <div class="video">
+        <iframe src="" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true"
+            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen="true">
+        </iframe>
+    </div>
+</div>
+    <head>
+    <style>
+        .habillage {
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 0;
+        }
+
+        .habillage .inner {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .habillage .inner img {
+            position: relative;
+            width: 100% !important;
+            margin: 0px auto;
+        }
+
+        .dark-mode .habillage .inner img {
+            opacity: 1;
+            filter: grayscale(100%);
+        }
+
+        .dark-mode .habillage {
+            background-color: #000 !important;
+        }
+
+        .dark-mode .habillage .habillage .inner {
+            background-color: #000 !important;
+        }
+    </style>
+</head>
+
+<div class="habillage">
+    <div class="inner relative">
+
+                        <img src="https://www.sante.gouv.ci/images/habillage_restez_connectes.jpg" alt="" class="img-fluid">
+                    </div>
+</div>
+    <div id="main_page" class="no-copy">
+        <head>
+        <style>
+
+        .Social-media{
+            display: flex;
+            justify-content: center;
+        }
+
+            .Social-media a{
+                display: flex;
+                height: 25px;
+                width: 25px;
+                margin: 0 2px;
+                border-radius: 5px;
+                align-items: center;
+                justify-content: center;
+                text-decoration: none;
+                color: #6a6969;
+                transition: transform 0.5s
+            }
+
+            .Social-media a i{
+                font-size: 50px;
+                color: orange;
+                transition: transform 0.5s;
+            }
+
+            .Social-media a:hover{
+
+            font-size: 14px;
+
+            background-color: #fff;
+
+            box-shadow:inset 4px 4px 6px -2px rgba(0,0,0,0.2),
+
+                        inset -4px -4px 6px -1px rgba(255,255,255,0.7),
+
+                                -0.5px -0.5px 0px -1px rgba(255,255,255,1),
+
+                                0.5px 0.5px 0px rgba(0,0,0,0.15),
+
+                                0px 12px 10px -10px rgba(0,0,0,0.05);
+
+            border: 1px solid rgba(0, 124, 196, 0.1);
+
+                transform: translateY(1px);
+
+            }
+
+            .Social-media a:hover i{
+
+                transform: scale(0.90);
+
+            }
+
+            .Social-media a:hover .fa-facebook{
+
+                color: #3b5998;
+
+            }
+
+            .Social-media a:hover .fa-x-twitter{
+
+                color: #101010;
+
+            }
+
+            .Social-media a:hover .fa-linkedin{
+
+                color: #00acee;
+
+            }
+
+            .Social-media a:hover .fa-instagram{
+
+                color: #f14843;
+
+            }
+
+            .Social-media a:hover .fa-youtube{
+
+                color: #f00;
+
+            }
+
+
+
+
+
+    </style>
+
+    <script>
+
+            $(document).ready(function(){
+
+                //Script du flash
+
+                var owl_flash = $('#owl_flash');
+
+                owl_flash.owlCarousel({
+                    loop:true,
+                    nav:false,
+                    dots:false,
+                    autoplay: 5,
+                    autoplayHoverPause: true,
+                    responsive:{
+                        0:{
+                            items:1
+                        },
+                        600:{
+                            items:1
+                        },
+                        1000:{
+                            items:1
+                        },
+
+                        1200:{
+                            items:1
+                        }
+                    }
+                })
+            })
+    </script>
+
+    <script>
+        if(sessionStorage.getItem("mode")) {
+                $('body').addClass('dark-mode');
+                $('div').addClass('dark-mode');
+            }
+    </script>
+
+    <style>
+
+        .ecrire a.link {
+
+            background-color: #e98f30;
+
+            color: white;
+
+            border-radius: 5px;
+
+            padding: 4px 6px;
+
+            font-size: 13px;
+
+            font-weight: 400;
+
+            transition: ease all 0.3s;
+
+            border-bottom: 1px solid #e98f30;
+
+        }
+        .ecrire a.link:hover {
+            background-color: #d6842c;
+        }
+        .top-submenu-icon {
+            float: right;
+            transition: ease 0.2s all;
+            transform: rotate(90deg);
+            margin-left: 8px;
+            font-size: 14px;
+        }
+
+    </style>
+</head>
+
+
+
+<div id="navigation" class="relative width-full h-auto mx-auto mt-0 p-0">
+    <!-- header -->
+    <div class="items">
+
+        <div class="flash  flex justify-start items-center">
+            <div class="libelle"><p>Flash Infos</p></div>
+            <div class="liste">
+                <div class="flash_items">
+                    <div id="owl_flash" class="owl-carousel owl-theme">
+                                                                                                                         <div class="item">
+                                                                                    <a href="https://www.sante.gouv.ci/flashs/1"  >
+                                              <span title="La signature électronique, officiellement opérationnelle en Côte d’Ivoire">
+                                                                                                    <b>Administration publique : </b>
+                                                                                                La signature électronique, officiellement opérationnelle en Côte d’Ivoire
+                                                </span>
+                                            </a>
+                                                                            </div>
+                                                                    <div class="item">
+                                                                                    <a href="https://www.sante.gouv.ci/flashs/4"  >
+                                              <span title="L&#039;Observatoire du Service Public (OSEP) informe que le centre d&#039;appel (27 22 40 98 98 - 800 000 07) est disponible.">
+                                                                                                    <b>Centre d&#039;appel OSEP : </b>
+                                                                                                L&#039;Observatoire du Service Public (OSEP) informe que le centre d&#039;appel ...
+                                                </span>
+                                            </a>
+                                                                            </div>
+                                                                    <div class="item">
+                                                                                    <a href="https://www.sante.gouv.ci/flashs/6"  >
+                                              <span title="Vous traversez une période difficile ? Appelez le 143, la ligne verte du Ministère de la Santé : écoute, soutien et assistance gratuits.">
+                                                                                                    <b>SANTE MENTALE : </b>
+                                                                                                Vous traversez une période difficile ? Appelez le 143, la ...
+                                                </span>
+                                            </a>
+                                                                            </div>
+                                                                    <div class="item">
+                                                                                    <a href="https://www.sante.gouv.ci/flashs/8"  >
+                                              <span title="Jusqu’au 31 août 2025, les personnes du secteur informel enrôlées à la CMU, sans autre couverture, ont accès aux soins et médicaments couverts par la CMU sans cotisation, dans toutes les structures sanitaires publiques.">
+                                                                                                    <b>CMU : </b>
+                                                                                                Jusqu’au 31 août 2025, les personnes du secteur informel enrôlées ...
+                                                </span>
+                                            </a>
+                                                                            </div>
+                                                                    <div class="item">
+                                                                                    <a href="https://www.sante.gouv.ci/flashs/9"  >
+                                              <span title="Jusqu’au 31 août 2025, l’Etat prend en charge 100% des soins (consultations, actes infirmiers, médicaments) dans les Centres de Santé Ruraux (CSR).">
+                                                                                                    <b>CMU : </b>
+                                                                                                Jusqu’au 31 août 2025, l’Etat prend en charge 100% des ...
+                                                </span>
+                                            </a>
+                                                                            </div>
+                                                                    <div class="item">
+                                                                                    <a href="https://www.sante.gouv.ci/flashs/10"  >
+                                              <span title="Les populations du secteur informel en particulier, sont encouragées à s’enrôler et à fréquenter les hôpitaux publics pour bénéficier de la CMU.">
+                                                                                                    <b>CMU : </b>
+                                                                                                Les populations du secteur informel en particulier, sont encouragées à ...
+                                                </span>
+                                            </a>
+                                                                            </div>
+                                                                    <div class="item">
+                                                                                    <a href="https://www.sante.gouv.ci/flashs/11"  >
+                                              <span title="Jusqu’au 31 août 2025, les consultations et examens liés au Diabète et à l’Hypertension (non compliqués) sont couverts à 70%, les médicaments à 33%, selon le panier de soins.">
+                                                                                                    <b>CMU : </b>
+                                                                                                Jusqu’au 31 août 2025, les consultations et examens liés au ...
+                                                </span>
+                                            </a>
+                                                                            </div>
+                                                                    <div class="item">
+                                                                                    <a href="https://www.sante.gouv.ci/flashs/12"  >
+                                              <span title="Concours d&#039;entrée à l&#039;INFAS - 2025 : Plus de 140 000 candidats en lice pour 10 000 places">
+                                                                                                    <b>INFAS : </b>
+                                                                                                Concours d&#039;entrée à l&#039;INFAS - 2025 : Plus de 140 ...
+                                                </span>
+                                            </a>
+                                                                            </div>
+                                                                                                        </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="ecrire">
+            <div id="responsive_logo">
+                <a href="https://www.sante.gouv.ci/accueil">
+                                                                        <img src="https://www.sante.gouv.ci/uploads/contacts/172735741588.png" alt="LOGO" class="img-fluid">
+                                                            </a>
+            </div>
+            <a href="https://www.sante.gouv.ci/ecrire-au-ministere" class="link bg-orange-500 hover:bg-orange-400 text-white font-400
+                py-1 px-2 border-b-2 border-orange-700 hover:border-orange-500 rounded">
+                <span><i class="fa-regular fa-envelope"></i></span> Écrire au ministère
+            </a>
+
+            <div class="Social-media flex items-center">
+               
+                                    <a href="https://www.facebook.com/mshpcmu" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
+                
+                                     <a href="https://www.instagram.com/gouvci.officiel" target="_blank"><i class="fab fa-instagram"></i></a>
+                
+                                    <a href="https://twitter.com/Santeci" target="_blank"><i class="fa-brands fa-x-twitter"></i></a>
+                    
+                                    <a href="https://www.tiktok.com/@ministere_de_la_sante_ci" target="_blank"><i class="fa-brands fa-tiktok"></i></a>
+                    
+                                    <a href="https://ci.linkedin.com/company/gouvernement-de-cote-d-ivoire" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a>
+                
+                                    <a href="https://www.youtube.com/user/gouvcivideo" target="_blank"><i class="fab fa-youtube"></i></a>
+                    
+                                    <a href="tel:+ 225 20 21 08 71 / + 225 20 22 58 11"><i class="fa-solid fa-phone-alt"></i></a>
+                
+            </div>
+
+            <div id="menu_toggle">
+                <span><i class="fas fa-bars"></i></span>
+            </div>
+        </div>
+
+    </div>
+    <!-- menu -->
+
+</div>
+
+<div class="container-fluid" id="navBar"> <!-- CSS navbar & dropemnu & Sidebar -->
+        <!-- Navigation -->
+        <div class="row no-gutter navigation">
+
+            <div class="col-12 menu">
+                <div class="logo">
+                    <a href="https://www.sante.gouv.ci/accueil">
+                                                                                    <img src="https://www.sante.gouv.ci/uploads/contacts/172735741588.png" alt="LOGO" class="img-fluid" style="max-width:250px">
+                                                                        </a>
+                </div>
+
+                <!-- Menu 2 niveauu -->
+
+                <div class="menu-row navbar2">
+                    <div class="menu-box">
+                        <div id="mainmenu">
+                            <ul id="menu">
+                                <li><a href="https://www.sante.gouv.ci/accueil">Accueil</a></li>
+                                <li><a>Ministère <span class="top-submenu-icon">&raquo;</span></a>
+                                    <ul class="submenu">
+                                                                                <li><a href="#!">Ministre <span class="submenu-icon">&raquo;</span></a>
+                                            <ul class="submenu">
+                                                <li><a href="https://www.sante.gouv.ci/mot-du-ministre">Mot du Ministre</a></li>
+                                                <li><a href="https://www.sante.gouv.ci/biographie-du-ministre">Biographie du Ministre</a></li>
+                                                
+                                            </ul>
+                                        </li>                                        
+                                        <li><a href="https://www.sante.gouv.ci/le-cabinet">Cabinet</a></li>
+                                        <li><a href="https://www.sante.gouv.ci/structures-sous-tutelle">Structures sous tutelles</a></li>
+					                    <li><a href="https://www.sante.gouv.ci/organes-de-regulation">Organes de régulation</a></li>
+                                        <li><a href="https://www.sante.gouv.ci/anciens-ministres">Anciens Ministres</a></li>
+                                        
+                                    </ul>
+
+                                </li>
+                                <li><a href="https://www.sante.gouv.ci/services">e-Services</a></li>
+                                <li><a href="https://www.sante.gouv.ci/actualites">Actualités <span class="top-submenu-icon">&raquo;</span></a>
+                                    <ul class="submenu">
+                                                                                                                                    <li>
+                                                    <a href="https://www.sante.gouv.ci/actualites/1">Actualités</a> 
+                                                </li>
+                                                                                            <li>
+                                                    <a href="https://www.sante.gouv.ci/actualites/2">Événements</a> 
+                                                </li>
+                                                                                            <li>
+                                                    <a href="https://www.sante.gouv.ci/actualites/3">Communiqué des conseils</a> 
+                                                </li>
+                                                                                                                        </ul>
+                                </li>
+
+                                <li>
+                                    <a>Publications <span class="top-submenu-icon">&raquo;</span></a>
+                                    <ul class="submenu">
+                                        <li>
+                                            <a href="https://www.sante.gouv.ci/dossiers">Dossiers</a>
+                                        </li>
+                                                                                    <li>
+                                                <a>DOCUMENTS DE PROJET<span class="submenu-icon">&raquo;</span></a>
+                                                <ul class="submenu">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </ul>
+                                            </li>
+                                                                                    <li>
+                                                <a>Projet<span class="submenu-icon">&raquo;</span></a>
+                                                <ul class="submenu">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/21">Nutrition</a>
+                                                            </li>
+                                                                                                                                                            </ul>
+                                            </li>
+                                                                                    <li>
+                                                <a>Documents d’utilité publique<span class="submenu-icon">&raquo;</span></a>
+                                                <ul class="submenu">
+                                                                                                                                                                        <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/31">DOCUMENTS PROJET ET PTF</a>
+                                                            </li>
+                                                                                                                                                                                                                                <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/30">AUTRES DOCUMENTS UTILES</a>
+                                                            </li>
+                                                                                                                                                                                                                                <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/29">CIRCULAIRES</a>
+                                                            </li>
+                                                                                                                                                                                                                                <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/28">DECISIONS</a>
+                                                            </li>
+                                                                                                                                                                                                                                <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/27">CARTE SANITAIRE</a>
+                                                            </li>
+                                                                                                                                                                                                                                <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/26">RAPPORTS</a>
+                                                            </li>
+                                                                                                                                                                                                                                <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/25">ARRETES</a>
+                                                            </li>
+                                                                                                                                                                                                                                <li>
+                                                                <a href="https://www.sante.gouv.ci/publications/sous-categorie/24">DECRET</a>
+                                                            </li>
+                                                                                                                                                                                                                                                                        </ul>
+                                            </li>
+                                                                            </ul>
+
+                                </li>
+
+                                <li><a href="#!">Galeries <span class="top-submenu-icon">&raquo;</span></a>
+                                    <ul class="submenu">
+                                        <li><a href="https://www.sante.gouv.ci/photos">Photos</a></li>
+                                        <li><a href="https://www.sante.gouv.ci/videos">Vidéos</a></li>
+                                        <li><a href="https://www.sante.gouv.ci/audios">Audios</a></li>
+                                    </ul>
+
+                                </li>
+                                <li><a>Agenda <span class="top-submenu-icon">&raquo;</span></a>
+                                    <ul class="submenu">
+                                        <li><a href="https://www.sante.gouv.ci/agenda-du-ministere">Ministère</a></li>
+                                        <li><a href="https://www.sante.gouv.ci/agenda-du-gouvernement">Gouvernement</a></li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="toggle">
+                    <div class="icon search">
+                        <span>
+                            <i class="fas fa-search"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <form action="https://www.sante.gouv.ci/recherche" class="searchForm">
+                    <div class="search">
+                        <input type="text" class="searchTerm" placeholder="Que cherchez-vous ?" name="q">
+                        <button type="submit" class="searchButton"> Rechercher </button>
+                    </div>
+                </form>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Sidebar -->
+
+        <div class="sidebar">
+            <div class="content">
+                <div class="links">
+                    <div class="logo">
+                        <a href="https://www.sante.gouv.ci/accueil">
+                                                                                        <img src="https://www.sante.gouv.ci/uploads/contacts/172735741588.png" alt="LOGO" class="img-fluid">
+                                                                            </a>
+
+                    </div>
+
+                    <ul class="menu">
+                        <li class="item">
+                            <a class="sub-a" href="https://www.sante.gouv.ci/accueil">Accueil </a>
+                        </li>
+
+                        <li class="item first-level">
+                            <a class="sub-a">Ministère <span class="icon-sous-menu">&raquo;</span></a>
+                            <ul class="submenu"> <!-- submenu -->
+                                
+                                <li class="item first-level">
+                                    <a>Ministre<span class="icon-sous-menu">&raquo;</span></a>
+                                    <ul class="submenu">
+                                        <li> <a href="https://www.sante.gouv.ci/mot-du-ministre">Mot du Ministre</a> </li>
+                                        <li> <a href="https://www.sante.gouv.ci/biographie-du-ministre">Biographie du Ministre</a> </li>
+                                      
+                                    </ul>
+                                </li>
+                                <li class="sub-item">
+                                    <a href="https://www.sante.gouv.ci/le-cabinet">Cabinets</a>
+                                </li>
+                                <li class="sub-item">
+                                    <a href="https://www.sante.gouv.ci/structures-sous-tutelle">Strucutres sous tutelles</a>
+                                </li>
+                                
+ 				                <li class="sub-item">
+                                    <a href="https://www.sante.gouv.ci/organes-de-regulation">Organes de régulation</a>
+                                </li>
+                                <li class="sub-item"> <a href="https://www.sante.gouv.ci/anciens-ministres">Anciens Ministres</a> </li>
+                            </ul>
+                        </li>
+
+
+                        <li class="item">
+                            <a class="sub-a" href="https://www.sante.gouv.ci/services">e-Services </a>
+                        </li>
+
+                        <li class="item first-level">
+                            <a>Actualités<span class="icon-sous-menu">&raquo;</span></a>
+                        
+                            <ul class="submenu">
+                                <!-- submenu -->
+                                                                <li>
+                                    <a href="https://www.sante.gouv.ci/actualites/1">Actualités</a>
+                                </li>
+                                                                <li>
+                                    <a href="https://www.sante.gouv.ci/actualites/2">Événements</a>
+                                </li>
+                                                                <li>
+                                    <a href="https://www.sante.gouv.ci/actualites/3">Communiqué des conseils</a>
+                                </li>
+                                                        
+                            </ul>
+                        </li>
+
+                        <li class="item first-level">
+                            <a>Publications <span class="icon-sous-menu">&raquo;</span></a>
+
+                            <ul class="submenu">
+
+                                <li>
+                                    <a href="https://www.sante.gouv.ci/dossiers">Dossiers</a>
+                                </li>
+                                                                    <li class="item first-level">
+                                        <a>DOCUMENTS DE PROJET <span class="icon-sous-menu">&raquo;</span></a>
+
+                                        <ul class="submenu">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </ul>
+                                    </li>
+                                                                    <li class="item first-level">
+                                        <a>Projet <span class="icon-sous-menu">&raquo;</span></a>
+
+                                        <ul class="submenu">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/21">Nutrition</a>
+                                                    </li>
+                                                                                                                                    </ul>
+                                    </li>
+                                                                    <li class="item first-level">
+                                        <a>Documents d’utilité publique <span class="icon-sous-menu">&raquo;</span></a>
+
+                                        <ul class="submenu">
+                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/31">DOCUMENTS PROJET ET PTF</a>
+                                                    </li>
+                                                                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/30">AUTRES DOCUMENTS UTILES</a>
+                                                    </li>
+                                                                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/29">CIRCULAIRES</a>
+                                                    </li>
+                                                                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/28">DECISIONS</a>
+                                                    </li>
+                                                                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/27">CARTE SANITAIRE</a>
+                                                    </li>
+                                                                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/26">RAPPORTS</a>
+                                                    </li>
+                                                                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/25">ARRETES</a>
+                                                    </li>
+                                                                                                                                                                                                <li>
+                                                        <a href="https://www.sante.gouv.ci/publications/sous-categorie/24">DECRET</a>
+                                                    </li>
+                                                                                                                                                                                                                                </ul>
+                                    </li>
+                                                            </ul>
+                        </li>
+
+                        <li class="item first-level">
+                            <a class="sub-a">Galeries <span class="icon-sous-menu">&raquo;</span></a>
+                            <ul class="submenu"> <!-- submenu -->
+                                <li class="sub-item">
+                                    <a href="https://www.sante.gouv.ci/photos">Photos</a>
+                                </li>
+                                <li class="sub-item">
+                                    <a href="https://www.sante.gouv.ci/videos">Vidéos</a>
+                                </li>
+                                <li class="sub-item">
+                                    <a href="https://www.sante.gouv.ci/audios">Audio</a>
+                                </li>
+
+                            </ul>
+
+                        </li>
+
+                        <li class="item first-level">
+                            <a class="sub-a">Agenda <span class="icon-sous-menu">&raquo;</span></a>
+                            <ul class="submenu">
+                                <!-- submenu -->
+                            
+                                <li class="sub-item">
+                                    <a href="https://www.sante.gouv.ci/agenda-du-ministere">Ministère</a>
+                                </li>
+                                <li class="sub-item">
+                                    <a href="https://www.sante.gouv.ci/agenda-du-gouvernement">Gouvernement</a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen">
+            <div class="screenBtn">
+                <img src="https://www.sante.gouv.ci/images/icons_close_orange.png" class="img-fluid blanc" alt="close X" width="80">
+            </div>
+        </div>
+
+    <script>
+        function validate() {
+            var search_value = document.forms["search-form"]["search"].value;
+            if(search_value == "") {
+                document.forms["search-form"]["search"].focus();
+                return false;
+            }
+        }
+
+        $(document).ready(function(){
+            $('#menu_toggle').click(function(){
+                console.log('Alert');
+                $('.sidebar').toggleClass('active');
+                $('').toggleClass('active');
+                $('.screen').toggleClass('active');
+            });
+            $('.screenBtn').click(function(){
+                $('.sidebar').toggleClass('active');
+                $('').toggleClass('active');
+                $('.screen').toggleClass('active');
+            });
+
+        });
+
+
+
+        $('.sidebar .item.first-level > a').click(function(event) {
+            $(this).parent().toggleClass('submenu-show').siblings().removeClass('submenu-show');
+        });
+
+        $('#navBar.container-fluid .navigation .menu ul .drop-menu li').click(function(event) { 
+            $(this).toggleClass('active').siblings().removeClass('active');
+        });
+
+        $(document).ready(function(){
+
+            $('.toggle .icon').click(function() {
+
+                $('.searchForm').toggleClass('active');
+
+                //alert('eeee')
+            });
+
+        });
+
+    </script>
+
+</div>
+            <div id="page_secondaire">
+        <!-- entete page secondaire   <i class="fas fa-home"></i> -->
+
+        <div class="_content" style="width:100% !important;border-top:1px solid rgba(134, 134, 134, 0.2)">
+            <div id="page_404">
+                <section>
+                    <div class="container">
+                        <h1>Code 404</h1>
+                        <p>La page que vous recherchez est introuvable.</p>
+                        <br>
+                        <a href="https://www.sante.gouv.ci/accueil" class="search-link"> Aller à l'Accueil</a>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+
+        <head>
+    <!-- owl -->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.css"
+        integrity="sha512-UTNP5BXLIptsaj5WdKFrkFov94lDx+eBvbKyoe1YAfjeRPC+gT5kyZ10kOHCfNZqEui1sxmqvodNUx3KbuYI/A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css"
+        integrity="sha512-tS3S5qG0BlhnQROyJXvNjeEM4UpMXHrQfTGmbQ1gKmelCxlSEBUaxhRBj/EFTzpbP4RVSrpEikbmdJobCvhE3g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"
+        integrity="sha512-bPs7Ae6pVvhOSiIcyUClR7/q2OAsRiovw4vAkX+zJbw3ShAeeqezq50RIIcIURq7Oa20rW2n2q+fyXBNcU9lrw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/owl.carousel@2.3.4/dist/owl.carousel.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/owl.carousel@2.3.4/dist/assets/owl.carousel.min.css">
+
+    <script>
+        $(document).ready(function() {
+            $('#footer .annuaire .links').click(function(event) {
+                $(this).toggleClass('active').siblings().removeClass('active');
+            });
+        });
+    </script>
+
+    <script>
+        (function(d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
+                js = d.createElement(s);
+                js.id = id;
+                js.src = "//connect.facebook.net/fr_FR/sdk.js#xfbml=1&version=v2.5&appId=220779081335178";
+                fjs.parentNode.insertBefore(js, fjs);
+            }
+            (document, 'script', 'facebook-jssdk')
+        );
+    </script>
+    <script>
+        $(function() {
+            $('#newsletterForm').on('submit', function(event) {
+                var v = grecaptcha.getResponse();
+                if (v.length == 0) {
+                    $('#newsletterForm #captcha-message').html("Veuillez valider le ReCaptcha SVP !");
+                    event.preventDefault();
+                    event.stopPropagation();
+                    // Arrêt d'envoi du formulaire
+                }
+            });
+
+        });
+    </script>
+
+    <style>
+        .g-recaptcha {
+            transform: scale(1);
+            -webkit-transform: scale(1);
+            transform-origin: 0 0;
+            -webkit-transform-origin: 0 0;
+            position: relative;
+            width: 100% !important;
+        }
+
+        .rcaptcha {
+            position: relative;
+            width: 100% !important;
+        }
+
+        #newsletterForm #captcha-message {
+
+            position: relative;
+
+            color: var(--orange);
+
+            font-size: 12px;
+
+            font-style: italic;
+
+        }
+
+        .section_one h2 {
+            font-size: 18px;
+        }
+
+        span.arrow {
+            position: absolute;
+            right: 7px;
+            top: 5px;
+            bottom: 5px;
+        }
+
+
+        .captcha_code_ban {
+            position: relative;
+            width: 99%;
+            /* border: 1px solid red; */
+            padding: 10px !important;
+            background-color: rgba(231, 231, 231, 0.2);
+        }
+
+        .captcha_code_ban p {
+            position: relative;
+            width: 100%;
+            margin: 0;
+            margin-bottom: -0px !important;
+            color: gray !important;
+            font-weight: 600;
+        }
+
+        .captcha_code_ban .captcha_form {
+            position: relative;
+            display: flex;
+            margin: 0;
+            padding: 10px 0px;
+        }
+
+        .captcha_code_ban .captcha_form input {
+            margin-left: 5px !important;
+            height: 30px !important;
+            margin-top: 2px !important;
+            max-width: 125px;
+        }
+
+        .captcha_code_ban .captcha_form input:focus {
+            border: 1px solid var(--vert);
+            /* Vert doux */
+            outline: none;
+            box-shadow: none;
+        }
+
+        .captcha_code_ban .message {
+            position: relative;
+            width: 100%;
+            font-size: 11px;
+        }
+
+        .copyright a {
+            color: white;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const wrapper = document.getElementById('flashWrapper');
+            const itemHeight = 135; // 125px height + 10px margin-bottom
+            const visible = 3;
+            const scrollSpeed = 3000;
+
+            let index = 0;
+            const originalItems = Array.from(wrapper.children);
+            const totalOriginal = originalItems.length;
+
+            // Clonage pour effet infini
+            originalItems.forEach(item => {
+                const clone = item.cloneNode(true);
+                wrapper.appendChild(clone);
+            });
+
+            const allItems = wrapper.children;
+
+            function updateActiveClass() {
+                // Supprimer toutes les classes "active"
+                Array.from(allItems).forEach(el => el.classList.remove('active'));
+
+                // Ajouter la classe active à l'élément actuellement en haut
+                const current = allItems[index];
+                if (current) {
+                    current.classList.add('active');
+                }
+            }
+
+            function scroll() {
+                index++;
+                wrapper.style.transition = 'transform 1s ease-in-out';
+                wrapper.style.transform = `translateY(-${index * itemHeight}px)`;
+
+                updateActiveClass();
+
+                if (index >= totalOriginal) {
+                    setTimeout(() => {
+                        wrapper.style.transition = 'none';
+                        wrapper.style.transform = 'translateY(0)';
+                        index = 0;
+                        updateActiveClass(); // reset la bonne classe active aussi
+                    }, 1000);
+                }
+            }
+
+            updateActiveClass(); // Initiale
+            setInterval(scroll, scrollSpeed);
+        });
+    </script>
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+</head>
+
+
+<div id="footer">
+    <div class="section_one">
+        <div class="content ">
+            <div class="items">
+                <div class="item gouv_actu">
+                    <h2>Newsletter</h2>
+                    <p>
+                        
+                        Vous souhaitez recevoir par mail le communiqué du Conseil des ministres, les décisions du
+                        Gouvernement et bien plus encore ? Inscrivez-vous en remplissant les champs ci-dessous.
+                    </p>
+                    <form action="https://www.sante.gouv.ci/admin/nwsletter/ajouter/post" method="post" id="newsletterForm">
+                        <input type="hidden" name="_token" value="">
+                        <input type="text" name="nom" value="" placeholder="Votre nom" required>
+                        <input type="email" name="email" placeholder="Votre email" required>
+                        
+                        <div class="captcha_code_ban" style="width: 100%">
+                            <p>Recopier le code ci-dessous dans la zone en face</p>
+                            <div class="captcha_form">
+                                <img src="https://www.sante.gouv.ci/images/cd2.png" alt="image de sécurité" width="110"
+                                    class="img-fluid">
+                                <input class="form-control" name="verif" type="text" placeholder="" required>
+                            </div>
+                                                    </div>
+                        <input type="submit" name="submit" class="btn submit" value="Je m'inscris">
+                    </form>
+                </div>
+
+                <div class="item">
+                    <h2>Flash infos</h2>
+                    <div class="flashs card"> <!-- Mon wiget X -->
+                        <div class="inner" id='footer_flash'>
+                            <div class="flash-container">
+                                <div class="flash-wrapper" id="flashWrapper">
+                                                                            <div class="flash-item">
+                                            <a href="https://www.sante.gouv.ci/flashs/12"
+                                                class=""
+                                                title="Concours d&#039;entrée à l&#039;INFAS - 2025 : Plus de 140 000 candidats en lice pour 10 000 places">
+                                                <b>
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    14/08/2025 12:00
+                                                </b>
+                                                <br>
+                                                <span>Concours d&#039;entrée à l&#039;INFAS - 2025 : Plus de 140 000 candidats en lice pour 10 000 places</span>
+                                            </a>
+                                        </div>
+                                                                            <div class="flash-item">
+                                            <a href="https://www.sante.gouv.ci/flashs/11"
+                                                class=""
+                                                title="Jusqu’au 31 août 2025, les consultations et examens liés au Diabète et à l’Hypertension (non compliqués) sont couverts à 70%, les médicaments à 33%, selon le panier de soins.">
+                                                <b>
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    07/05/2025 11:59
+                                                </b>
+                                                <br>
+                                                <span>Jusqu’au 31 août 2025, les consultations et examens liés au Diabète et à l’Hypertension (non compliqués) sont couverts à 70%,...</span>
+                                            </a>
+                                        </div>
+                                                                            <div class="flash-item">
+                                            <a href="https://www.sante.gouv.ci/flashs/10"
+                                                class=""
+                                                title="Les populations du secteur informel en particulier, sont encouragées à s’enrôler et à fréquenter les hôpitaux publics pour bénéficier de la CMU.">
+                                                <b>
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    07/05/2025 11:59
+                                                </b>
+                                                <br>
+                                                <span>Les populations du secteur informel en particulier, sont encouragées à s’enrôler et à fréquenter les hôpitaux publics pour bénéficier de...</span>
+                                            </a>
+                                        </div>
+                                                                            <div class="flash-item">
+                                            <a href="https://www.sante.gouv.ci/flashs/9"
+                                                class=""
+                                                title="Jusqu’au 31 août 2025, l’Etat prend en charge 100% des soins (consultations, actes infirmiers, médicaments) dans les Centres de Santé Ruraux (CSR).">
+                                                <b>
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    07/05/2025 11:59
+                                                </b>
+                                                <br>
+                                                <span>Jusqu’au 31 août 2025, l’Etat prend en charge 100% des soins (consultations, actes infirmiers, médicaments) dans les Centres de Santé...</span>
+                                            </a>
+                                        </div>
+                                                                            <div class="flash-item">
+                                            <a href="https://www.sante.gouv.ci/flashs/8"
+                                                class=""
+                                                title="Jusqu’au 31 août 2025, les personnes du secteur informel enrôlées à la CMU, sans autre couverture, ont accès aux soins et médicaments couverts par la CMU sans cotisation, dans toutes les structures sanitaires publiques.">
+                                                <b>
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    07/05/2025 11:56
+                                                </b>
+                                                <br>
+                                                <span>Jusqu’au 31 août 2025, les personnes du secteur informel enrôlées à la CMU, sans autre couverture, ont accès aux soins...</span>
+                                            </a>
+                                        </div>
+                                                                            <div class="flash-item">
+                                            <a href="https://www.sante.gouv.ci/flashs/6"
+                                                class=""
+                                                title="Vous traversez une période difficile ? Appelez le 143, la ligne verte du Ministère de la Santé : écoute, soutien et assistance gratuits.">
+                                                <b>
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    03/04/2025 14:15
+                                                </b>
+                                                <br>
+                                                <span>Vous traversez une période difficile ? Appelez le 143, la ligne verte du Ministère de la Santé : écoute, soutien...</span>
+                                            </a>
+                                        </div>
+                                                                            <div class="flash-item">
+                                            <a href="https://www.sante.gouv.ci/flashs/4"
+                                                class=""
+                                                title="L&#039;Observatoire du Service Public (OSEP) informe que le centre d&#039;appel (27 22 40 98 98 - 800 000 07) est disponible.">
+                                                <b>
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    16/04/2024 11:18
+                                                </b>
+                                                <br>
+                                                <span>L&#039;Observatoire du Service Public (OSEP) informe que le centre d&#039;appel (27 22 40 98 98 - 800 000 07) est...</span>
+                                            </a>
+                                        </div>
+                                                                            <div class="flash-item">
+                                            <a href="https://www.sante.gouv.ci/flashs/1"
+                                                class=""
+                                                title="La signature électronique, officiellement opérationnelle en Côte d’Ivoire">
+                                                <b>
+                                                    <i class="fas fa-clock mr-1"></i>
+                                                    15/04/2024 21:52
+                                                </b>
+                                                <br>
+                                                <span>La signature électronique, officiellement opérationnelle en Côte d’Ivoire</span>
+                                            </a>
+                                        </div>
+                                                                    </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="item">
+                    <h2>Gouv'Facebook</h2>
+                    <div class="facebook card">
+                        <div class="inner">
+                            <div id="facebook-like-box-4" class="sidebar-widget widget_facebook-like-box border"
+                                style="width: 400px;">
+                                <div class="fb-page" data-href="https://www.facebook.com/mshpcmu" data-tabs="timeline"
+                                    data-width="350" data-height="" data-small-header="false"
+                                    data-adapt-container-width="false" data-hide-cover="false"
+                                    data-show-facepile="true">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <div class="section_two">
+        <div class="content ">
+            <div class="logo">
+                <div class="inner">
+                                                                        <img src="https://www.sante.gouv.ci/uploads/contacts/172735741588.png" alt="LOGO"
+                                class="img-fluid">
+                                                            </div>
+            </div>
+
+            <div class="items">
+                <div class="image">
+
+
+                    <div class="reseaux">
+                        <p>Réseaux et diffusion</p>
+                        <div class="links">
+                                                            <a href="https://www.facebook.com/mshpcmu" target="_blank"><i
+                                        class="fa-brands fa-facebook-f"></i></a>
+                            
+                                                            <a href="https://www.instagram.com/gouvci.officiel" target="_blank"><i
+                                        class="fab fa-instagram"></i></a>
+                            
+                                                            <a href="https://twitter.com/Santeci" target="_blank"><i
+                                        class="fa-brands fa-x-twitter"></i></a>
+                            
+                                                            <a href="https://www.tiktok.com/@ministere_de_la_sante_ci" target="_blank"><i
+                                        class="fa-brands fa-tiktok"></i></a>
+                            
+                                                            <a href="https://ci.linkedin.com/company/gouvernement-de-cote-d-ivoire" target="_blank"><i
+                                        class="fa-brands fa-linkedin-in"></i></a>
+                            
+                                                            <a href="https://www.youtube.com/user/gouvcivideo" target="_blank"><i
+                                        class="fab fa-youtube"></i></a>
+                                                        <a href="tel:+ 225 20 21 08 71 / + 225 20 22 58 11"><i class="fa-solid fa-phone-alt"></i></a>
+                        </div>
+                    </div>
+
+                    <div class="annuaire">
+                        <h1>ANNUAIRE DES SITES WEB GOUVERNEMENTAUX</h1>
+
+                        <div class="new">
+                            <select id="siteSelect" class="select-with-icon" style="width: 100%"></select>
+                            <select id="siteSelectAmbassades" class="select-with-icon" style="width: 100%"></select>
+                            <select id="siteSelectAutres" class="select-with-icon" style="width: 100%"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="institutions">
+
+                    <div class="item">
+                        <h2>Ministère</h2>
+                        <ul class="submenu">
+                            
+                            <li><a href="https://www.sante.gouv.ci/mot-du-ministre">Mot du Ministre</a></li>
+                            <li><a href="https://www.sante.gouv.ci/biographie-du-ministre">Biographie du Ministre</a></li>
+                            <li><a href="https://www.sante.gouv.ci/le-cabinet">Cabinet</a></li>
+                            <li><a href="https://www.sante.gouv.ci/structures-sous-tutelle">Strucutres sous tutelles</a></li>
+                            <li><a href="https://www.sante.gouv.ci/organes-de-regulation">Organes de régulation</a></li>
+                            <li><a href="https://www.sante.gouv.ci/anciens-ministres">Anciens Ministres</a></li>
+
+                        </ul>
+
+
+                    </div>
+
+
+                    <div class="item">
+                        <h2>Actualités</h2>
+                        <ul>
+                                                            <li> <a
+                                        href="https://www.sante.gouv.ci/actualites/1">Actualités</a>
+                                </li>
+                                                            <li> <a
+                                        href="https://www.sante.gouv.ci/actualites/2">Événements</a>
+                                </li>
+                                                            <li> <a
+                                        href="https://www.sante.gouv.ci/actualites/3">Communiqué des conseils</a>
+                                </li>
+                                                    </ul>
+                    </div>
+
+
+                    <div class="item">
+                        <h2>Publications</h2>
+                        <ul class="submenu">
+
+                            <li>
+                                <a href="https://www.sante.gouv.ci/dossiers">Dossiers</a>
+                            </li>
+
+                                                                                                                                        <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/31">DOCUMENTS PROJET ET PTF</a>
+                                        </li>
+                                                                                                                                                <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/30">AUTRES DOCUMENTS UTILES</a>
+                                        </li>
+                                                                                                                                                <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/29">CIRCULAIRES</a>
+                                        </li>
+                                                                                                                                                <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/28">DECISIONS</a>
+                                        </li>
+                                                                                                                                                <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/27">CARTE SANITAIRE</a>
+                                        </li>
+                                                                                                                                                <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/26">RAPPORTS</a>
+                                        </li>
+                                                                                                                                                <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/25">ARRETES</a>
+                                        </li>
+                                                                                                                                                <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/24">DECRET</a>
+                                        </li>
+                                                                                                                                                <li> <a
+                                                href="https://www.sante.gouv.ci/publications/sous-categorie/21">Nutrition</a>
+                                        </li>
+                                                                                                
+
+
+                        </ul>
+                    </div>
+
+
+                    <div class="item">
+                        <h2>e-Services</h2>
+                        <ul>
+
+                            <li><a href="https://www.sante.gouv.ci/services">e-Services</a></li>
+
+                        </ul>
+                    </div>
+
+
+                    <div class="item">
+                        <h2>Galerie</h2>
+                        <ul>
+                            <li><a href="https://www.sante.gouv.ci/videos">Vidéos</a></li>
+                            <li><a href="https://www.sante.gouv.ci/photos">Photos</a></li>
+                            <li><a href="https://www.sante.gouv.ci/audios">Audios</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="item">
+                        <h2>Agenda</h2>
+                        <ul>
+                            <li><a href="https://www.sante.gouv.ci/agenda-du-ministere">Ministère</a></li>
+                            <li><a href="https://www.sante.gouv.ci/agenda-du-gouvernement">Gouvernement</a></li>
+                        </ul>
+                    </div>
+
+
+                </div>
+
+            </div>
+
+            <div class="contact_gouv">
+                <a href="#">Adresse : 12ème Etage-Tour B cité  Administrative Abidjan-Plateau </a> <span></span>
+                <a href="#">Tél : + 225 20 21 08 71 / + 225 20 22 58 11 </a> <span></span>
+                <a href="#">Mail : info@sante.gouv.ci</a>
+            </div>
+
+            <div class="links_gouv">
+                
+                                                            <a href="https://www.gouv.ci/"> gouv.ci</a>
+                                            <a href="https://data.gouv.ci/"> open data</a>
+                                            <a href="https://psgouv.ci/"> psgouv.ci</a>
+                                                </div>
+
+            <div class="copyright">
+                <h2>© Copyright 2026 | <a href="https://www.sante.gouv.ci/mentions-legales">Mentions légales</a> | <a
+                        href="https://www.sante.gouv.ci/politique-de-confidentialite-des-services-numeriques">Politique de confidentialité</a>
+                    | Ministère de la Santé, de l&#039;Hygiène Publique et de la Couverture Maladie Universelle</h2>
+                <div class="conception">
+                    <h2>Conception et Réalisation</h2>
+                    <a href="https://cicg.gouv.ci"><img src="https://www.gouv.ci/images/cicg.png" alt=""
+                            width="180" class="img-fluid"></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#siteSelect').select2({
+            placeholder: 'Sites des ministères',
+            minimumInputLength: 0,
+            ajax: {
+                url: 'https://www.sante.gouv.ci/ajax/search/ministeres',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term || ''
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data
+                    };
+                },
+                cache: true
+            },
+            language: {
+                errorLoading: () => "Impossible de charger les résultats.",
+                inputTooShort: () => "Tapez au moins un caractère.",
+                noResults: () => "Aucun résultat trouvé.",
+                searching: () => "Recherche en cours..."
+            }
+        });
+
+        // Forcer le chargement initial à l’ouverture
+        $('#siteSelect').on('select2:open', function() {
+            $('.select2-search__field').trigger('input');
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function() {
+        $('#siteSelectAmbassades').select2({
+            placeholder: 'Sites des ambassades',
+            minimumInputLength: 0,
+            ajax: {
+                url: 'https://www.sante.gouv.ci/ajax/search/ambassades',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term || ''
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data
+                    };
+                },
+                cache: true
+            },
+            language: {
+                errorLoading: () => "Impossible de charger les résultats.",
+                inputTooShort: () => "Tapez au moins un caractère.",
+                noResults: () => "Aucun résultat trouvé.",
+                searching: () => "Recherche en cours..."
+            }
+        });
+
+        // Forcer le chargement initial à l’ouverture
+        $('#siteSelectAmbassades').on('select2:open', function() {
+            $('.select2-search__field').trigger('input');
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function() {
+        $('#siteSelectAutres').select2({
+            placeholder: 'Autres sites web',
+            minimumInputLength: 0,
+            ajax: {
+                url: 'https://www.sante.gouv.ci/ajax/search/autres',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term || ''
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data
+                    };
+                },
+                cache: true
+            },
+            language: {
+                errorLoading: () => "Impossible de charger les résultats.",
+                inputTooShort: () => "Tapez au moins un caractère.",
+                noResults: () => "Aucun résultat trouvé.",
+                searching: () => "Recherche en cours..."
+            }
+        });
+
+        // Forcer le chargement initial à l’ouverture
+        $('#siteSelectAutres').on('select2:open', function() {
+            $('.select2-search__field').trigger('input');
+        });
+
+    });
+</script>
+    </div>
+
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    
+    
+    <script>
+        $(document).ready(function() {
+            $('#dark-mode-button .checkbox-label').click(function() {
+                if (!sessionStorage.getItem("mode")) {
+                    sessionStorage.setItem("mode", 'auto');
+                    $('body').addClass('dark-mode');
+                    $('div').addClass('dark-mode');
+                } else {
+                    if (sessionStorage.getItem("mode")) {
+                        sessionStorage.removeItem('mode');
+                        $('body').removeClass('dark-mode');
+                        $('div').removeClass('dark-mode');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
