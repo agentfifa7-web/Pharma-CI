@@ -90,7 +90,7 @@ PHARMA CI vous aide à trouver une pharmacie en Côte d'Ivoire, à tout moment.
 • Médicaments : plus de 4 500 produits, prix publics et liste CMU.
 • Fonctionne même avec une connexion faible : les dernières informations consultées restent disponibles.
 
-Les informations proviennent de sources publiques (notamment pharmacies-de-garde.ci) et sont indicatives :
+Les informations proviennent de sources publiques et sont indicatives :
 confirmez toujours auprès de la pharmacie. PHARMA CI ne vend pas de médicaments et ne remplace pas l'avis
 d'un pharmacien ou d'un médecin. En cas d'urgence, appelez le 185 (SAMU).
 ```

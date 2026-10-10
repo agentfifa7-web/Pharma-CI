@@ -24,11 +24,11 @@ type Payload = {
 export function replaceMedications(data: Payload) {
   const prixDate = (data.sources.prix.modified ?? data.generatedAt).slice(0, 10)
   const cmuDate = (data.sources.cmu.modified ?? data.generatedAt).slice(0, 10)
-  const cmuIn = { status: 'pris_en_charge' as const, source: 'Liste CMU publiée sur pharmacies-de-garde.ci', sourceUrl: data.sources.cmu.url, updatedAt: cmuDate }
+  const cmuIn = { status: 'pris_en_charge' as const, source: 'Liste CMU publique', sourceUrl: data.sources.cmu.url, updatedAt: cmuDate }
   const cmuOut = {
     status: 'a_verifier' as const,
     conditions: "Absent de la liste CMU publiée par la source : vérifiez auprès de votre pharmacien ou de la CNAM.",
-    source: 'Liste CMU publiée sur pharmacies-de-garde.ci',
+    source: 'Liste CMU publique',
     sourceUrl: data.sources.cmu.url,
     updatedAt: cmuDate,
   }
@@ -43,8 +43,8 @@ export function replaceMedications(data: Payload) {
     cmu: r.k ? cmuIn : cmuOut,
     price: r.p
       ? r.s === 'c'
-        ? { amount: r.p, level: 'communique', updatedAt: cmuDate, source: 'Liste CMU — pharmacies-de-garde.ci', sourceUrl: data.sources.cmu.url }
-        : { amount: r.p, level: 'communique', updatedAt: prixDate, source: 'Prix des médicaments en pharmacie — pharmacies-de-garde.ci', sourceUrl: data.sources.prix.url }
+        ? { amount: r.p, level: 'communique', updatedAt: cmuDate, source: 'Liste CMU publique', sourceUrl: data.sources.cmu.url }
+        : { amount: r.p, level: 'communique', updatedAt: prixDate, source: 'Liste publique des prix des médicaments en pharmacie', sourceUrl: data.sources.prix.url }
       : undefined,
     lab: r.l,
     regulatoryStatus: r.a ? ammStatus(r) : undefined,

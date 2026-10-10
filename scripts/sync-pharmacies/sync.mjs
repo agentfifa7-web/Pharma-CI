@@ -193,7 +193,7 @@ function toPharmacy({ id, name, note, phone, city, commune, quartier, position, 
     gardeGroup: -1,
     garde: period ? { start: period.start, end: period.end } : undefined,
     cmuVerified: false, insurances: [], deliveryAvailable: city === 'Abidjan', claimed: false,
-    source: 'pharmacies-de-garde.ci', sourceUrl: link ?? GARDE_URL,
+    source: 'Source publique', sourceUrl: link ?? GARDE_URL,
   }
 }
 
@@ -427,7 +427,7 @@ async function main() {
     for (const p of previous.pharmacies) if (!ids.has(p.id) && !p.id.startsWith('pg-g-')) pharmacies.push({ ...p, garde: undefined })
   }
   await writeJson('pharmacies.json', {
-    source: BASE, sourceLabel: 'pharmacies-de-garde.ci', generatedAt: NOW, garde: garde.period,
+    source: BASE, sourceLabel: 'Sources publiques', generatedAt: NOW, garde: garde.period,
     counts: { total: pharmacies.length, garde: garde.entries.length, approxPositions: pharmacies.filter((p) => p.positionApprox).length },
     pharmacies,
   })

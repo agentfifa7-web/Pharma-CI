@@ -87,7 +87,7 @@ export default function AdminPharmacies() {
       <Notice tone="blue" icon={<Info size={16} />} className="mt-5">
         <p>Source actuelle : <strong>{pharmacySourceLabel()}</strong>.</p>
         <p className="mt-1">
-          En production, l'annuaire est synchronisé par un service backend qui agrège les données publiques (ex. <strong>pharmacies-de-garde.ci</strong> : liste des pharmacies et tours de garde par commune),
+          En production, l'annuaire est synchronisé par un service backend qui agrège les données publiques (liste des pharmacies et tours de garde par commune),
           les normalise et les met en cache. Le frontend s'y connecte via <code className="rounded bg-white/70 px-1">VITE_PHARMACY_API_URL</code> (voir <code className="rounded bg-white/70 px-1">src/services/pharmacyProvider.ts</code>).
           Les fiches revendiquées par les pharmaciens priment sur les données publiques.
         </p>

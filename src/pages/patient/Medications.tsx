@@ -37,13 +37,13 @@ function SourceNote({ className }: { className?: string }) {
       <ul className="space-y-1">
         {MEDICATION_META.prixUrl && (
           <li>
-            Prix : <a href={MEDICATION_META.prixUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-700 underline">« Prix des médicaments en pharmacie en Côte d'Ivoire »</a> — pharmacies-de-garde.ci
+            Prix : <a href={MEDICATION_META.prixUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-700 underline">« Prix des médicaments en pharmacie en Côte d'Ivoire »</a>
             {MEDICATION_META.prixUpdatedAt && <>, mise à jour du {dateFr(MEDICATION_META.prixUpdatedAt)}</>}.
           </li>
         )}
         {MEDICATION_META.cmuUrl && (
           <li>
-            CMU : <a href={MEDICATION_META.cmuUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-700 underline">« Liste des médicaments pris en charge par la CMU »</a> — pharmacies-de-garde.ci
+            CMU : <a href={MEDICATION_META.cmuUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-700 underline">« Liste des médicaments pris en charge par la CMU »</a>
             {MEDICATION_META.cmuUpdatedAt && <>, mise à jour du {dateFr(MEDICATION_META.cmuUpdatedAt)}</>}.
           </li>
         )}
@@ -83,7 +83,7 @@ export default function Medications() {
         <EmptyState
           icon={<Pill />}
           title="Base médicaments non chargée"
-          text="Les données (liste des prix et liste CMU publiées sur pharmacies-de-garde.ci) n'ont pas pu être chargées. Réessayez plus tard ou lancez la synchronisation."
+          text="Les données (liste des prix et liste CMU) n'ont pas pu être chargées. Réessayez plus tard ou lancez la synchronisation."
         />
       </div>
     )

@@ -208,10 +208,10 @@ function medicationAnswer(q: string, m: Medication): AiAnswer {
     const candidates = (m.cmuCandidates ?? []).map((id) => medById(id)).filter((x): x is Medication => !!x)
     const status =
       m.cmu.status === 'pris_en_charge'
-        ? `✅ ${m.brand} figure sur la liste des médicaments pris en charge par la CMU publiée par pharmacies-de-garde.ci (mise à jour du ${cmuDate(m)}).`
+        ? `✅ ${m.brand} figure sur la liste publique des médicaments pris en charge par la CMU (mise à jour du ${cmuDate(m)}).`
         : m.cmu.status === 'non_pris_en_charge'
           ? `❌ ${m.brand} est indiqué comme non pris en charge (source : ${m.cmu.source}, ${cmuDate(m)}).`
-          : `⚠️ ${m.brand} ne figure pas, sous ce libellé, sur la liste CMU publiée par pharmacies-de-garde.ci (mise à jour du ${cmuDate(m)}).${m.cmu.conditions ? `\n${m.cmu.conditions}` : ''}`
+          : `⚠️ ${m.brand} ne figure pas, sous ce libellé, sur la liste CMU publique (mise à jour du ${cmuDate(m)}).${m.cmu.conditions ? `\n${m.cmu.conditions}` : ''}`
     const cand = candidates.length
       ? `\n\nProduits de la même marque présents sur la liste CMU (cela ne signifie pas que ce produit-ci est pris en charge) :\n${candidates.slice(0, 5).map((c) => `• ${c.brand}`).join('\n')}`
       : ''
@@ -316,7 +316,7 @@ export function answer(question: string): AiAnswer {
   }
   if (has(q, ['cmu', 'couverture maladie'])) {
     return {
-      text: 'La CMU (Couverture Maladie Universelle) prend en charge une liste de médicaments définie par les autorités, selon la DCI, le dosage et la forme.\n\nDans PHARMA CMU, recherchez un médicament pour savoir s\'il figure sur la liste CMU publiée par pharmacies-de-garde.ci. Seule la liste officielle publiée par la CNAM et le ministère de la Santé (sante.gouv.ci) fait foi.',
+      text: 'La CMU (Couverture Maladie Universelle) prend en charge une liste de médicaments définie par les autorités, selon la DCI, le dosage et la forme.\n\nDans PHARMA CMU, recherchez un médicament pour savoir s\'il figure sur la liste CMU publique. Seule la liste officielle publiée par la CNAM et le ministère de la Santé (sante.gouv.ci) fait foi.',
       links: [{ label: 'PHARMA CMU', to: '/cmu' }],
     }
   }

@@ -45,7 +45,7 @@ export default function Cmu() {
         <p className="text-lg font-extrabold">🛡️ Couverture Maladie Universelle</p>
         <p className="mt-1 text-sm leading-relaxed text-white/85">
           La CMU prend en charge une liste de médicaments définie par les autorités. Recherchez un médicament pour savoir s'il figure
-          sur la liste publiée par pharmacies-de-garde.ci{MEDICATION_META.cmuUpdatedAt && <> (mise à jour du {dateFr(MEDICATION_META.cmuUpdatedAt)})</>}.
+          sur la liste CMU publique{MEDICATION_META.cmuUpdatedAt && <> (mise à jour du {dateFr(MEDICATION_META.cmuUpdatedAt)})</>}.
         </p>
         <div className="relative mt-4">
           <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -133,8 +133,8 @@ export default function Cmu() {
         <p>
           Source :{' '}
           {sourceUrl ? (
-            <a href={sourceUrl} target="_blank" rel="noreferrer" className="font-semibold underline">« Liste des médicaments pris en charge par la CMU » — pharmacies-de-garde.ci</a>
-          ) : 'liste CMU publiée sur pharmacies-de-garde.ci'}
+            <a href={sourceUrl} target="_blank" rel="noreferrer" className="font-semibold underline">« Liste des médicaments pris en charge par la CMU »</a>
+          ) : 'liste CMU publique'}
           {MEDICATION_META.cmuUpdatedAt && <> (mise à jour du {dateFr(MEDICATION_META.cmuUpdatedAt)})</>}.
         </p>
         <p className="mt-1">

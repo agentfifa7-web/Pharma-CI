@@ -38,3 +38,9 @@ html.senior { font-size: 19px; }
 .grid > *, .flex-col > * { min-width: 0; }
 /* Libellés de la source sans espaces après les virgules (ex. « DERMATOLOGIE,DERMOCORTICOIDE ») */
 .break-source { overflow-wrap: anywhere; }
+
+/* Bandeau des pharmacies de garde : défilement continu de droite à gauche */
+@keyframes garde-ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+.garde-ticker { animation: garde-ticker linear infinite; }
+.garde-ticker:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .garde-ticker { animation-duration: 0s !important; } }
