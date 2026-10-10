@@ -17,23 +17,25 @@
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 4
+const VERSION = 5
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
-// Modèles utilisés, par ordre de préférence. « startMs » : moment où le modèle démarre. Les deux modèles « flash »
-// récents démarrent ensemble (si l'un est saturé, l'autre répond) ; le modèle « lite », très rapide mais moins précis
-// sur l'écriture manuscrite, démarre en secours après 8 s (ou dès que les autres ont échoué).
-// gemini-flash-latest n'est plus utilisé : au diagnostic du 10/10/2026, il ne répondait pas, même à une question simple.
+// Modèles utilisés, par ordre de préférence. « startMs » : moment où le modèle démarre (ou plus tôt si les modèles
+// déjà lancés ont tous échoué). Choix d'après le diagnostic du 10/10/2026 avec la clé de PHARMA CI :
+// gemini-3.5-flash répond en ~1,3 s ; gemini-3.8-flash et gemini-flash-latest ne répondent pas (25 s).
+// Le modèle « lite », très rapide mais moins précis sur l'écriture manuscrite, sert de secours.
 // « thinking » : réglages de réflexion essayés dans l'ordre (le suivant si le modèle refuse le réglage ; null = aucun réglage).
 const FAST_THINKING = [{ thinkingLevel: 'low' }, { thinkingBudget: 1024 }, null]
 const PLAN = [
-  { model: 'gemini-3.8-flash', startMs: 0, thinking: FAST_THINKING },
   { model: 'gemini-3.5-flash', startMs: 0, thinking: FAST_THINKING },
-  { model: 'gemini-flash-lite-latest', startMs: 8_000, thinking: [null] },
+  { model: 'gemini-flash-lite-latest', startMs: 10_000, thinking: [null] },
 ]
 // Modèles testés en plus par le diagnostic, pour comparaison.
 const DIAGNOSTIC_EXTRA = [
+  { model: 'gemini-3.8-flash', thinking: FAST_THINKING },
+  { model: 'gemini-3.7-flash', thinking: FAST_THINKING },
+  { model: 'gemini-3.6-flash', thinking: FAST_THINKING },
   { model: 'gemini-flash-latest', thinking: FAST_THINKING },
   { model: 'gemini-3.1-flash-lite', thinking: [null] },
 ]
