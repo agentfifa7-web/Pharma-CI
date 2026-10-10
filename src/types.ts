@@ -256,6 +256,35 @@ export type Insurance = {
   services: string[]
 }
 
+/** Produit d'un assureur partenaire (rubrique « Trouver une assurance »). */
+export type InsuranceProduct = {
+  id: string
+  name: string
+  /** Public visé : individuel, famille, entreprise, senior, étudiant… */
+  target: string
+  /** Prix en FCFA, par période. */
+  price: number
+  period: 'mois' | 'trimestre' | 'an'
+  /** Taux de prise en charge (%) et plafond annuel (FCFA), facultatifs. */
+  rate?: number
+  ceiling?: number
+  services: string[]
+  conditions?: string
+}
+
+/** Assureur partenaire, ajouté par l'administration et partagé par le service PHARMA CI. */
+export type InsurerPartner = {
+  id: string
+  name: string
+  description?: string
+  phone?: string
+  whatsapp?: string
+  email?: string
+  website?: string
+  products: InsuranceProduct[]
+  updatedAt?: string
+}
+
 export type UserInsurance = { insurerId: string; memberNumber: string; holder: string }
 
 export type NewsArticle = {

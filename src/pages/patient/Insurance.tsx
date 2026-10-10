@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, CheckCircle2, CreditCard, Handshake, Pencil, ShieldPlus, Store } from 'lucide-react'
+import { CheckCircle2, CreditCard, Handshake, Pencil, ShieldPlus, Store } from 'lucide-react'
 import type { Insurance as InsuranceT } from '../../types'
 import { INSURANCES, insurerName } from '../../data/insurances'
 import { useStore } from '../../store/useStore'
 import { usePharmacies } from '../../lib/usePharmacies'
 import { fcfa } from '../../lib/format'
 import PharmacyCard from '../../components/PharmacyCard'
-import { Badge, Button, ButtonLink, Card, Chips, EmptyState, Input, Modal, Notice, PageHeader, Section, Select } from '../../components/ui'
+import { Badge, Button, ButtonLink, Card, Chips, EmptyState, Input, Notice, PageHeader, Section, Select } from '../../components/ui'
+import FindInsurance from './FindInsurance'
 
-type Tab = 'mon' | 'marketplace'
+type Tab = 'trouver' | 'mon'
 const OTHER = '__autre__'
 
 function Coverage({ ins }: { ins: InsuranceT }) {
@@ -26,10 +27,12 @@ function MyInsurance() {
   const insurance = useStore((s) => s.insurance)
   const setInsurance = useStore((s) => s.setInsurance)
   const userName = useStore((s) => s.user.name)
+  const partners = useStore((s) => s.partners)
+  const choices = [...INSURANCES.map((i) => ({ id: i.id, name: i.name })), ...partners.map((p) => ({ id: p.id, name: p.name }))]
   const [editing, setEditing] = useState(!insurance)
-  const partner = (id?: string) => !!id && INSURANCES.some((i) => i.id === id)
+  const partner = (id?: string) => !!id && choices.some((i) => i.id === id)
   const [form, setForm] = useState({
-    choice: partner(insurance?.insurerId) ? insurance!.insurerId : INSURANCES.length ? (insurance ? OTHER : INSURANCES[0]!.id) : OTHER,
+    choice: partner(insurance?.insurerId) ? insurance!.insurerId : choices.length ? (insurance ? OTHER : choices[0]!.id) : OTHER,
     freeName: insurance && !partner(insurance.insurerId) ? insurance.insurerId : '',
     memberNumber: insurance?.memberNumber ?? '',
     holder: insurance?.holder ?? userName,
@@ -52,9 +55,9 @@ function MyInsurance() {
         <Card className="mb-5">
           <form onSubmit={save} className="space-y-3">
             <p className="font-bold">Enregistrer mon assurance</p>
-            {INSURANCES.length > 0 && (
+            {choices.length > 0 && (
               <Select label="Assureur" value={form.choice} onChange={(e) => setForm({ ...form, choice: e.target.value })}>
-                {INSURANCES.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                {choices.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                 <option value={OTHER}>Autre assureur…</option>
               </Select>
             )}
@@ -77,7 +80,7 @@ function MyInsurance() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-white/60">Carte d'assuré</p>
-              <p className="mt-1 text-xl font-extrabold">{insurerName(insurance.insurerId)}</p>
+              <p className="mt-1 text-xl font-extrabold">{partners.find((p) => p.id === insurance.insurerId)?.name ?? insurerName(insurance.insurerId)}</p>
             </div>
             <CreditCard className="text-white/60" />
           </div>
@@ -113,7 +116,7 @@ function MyInsurance() {
             {accepting.length > 6 && <p className="mt-2 text-center text-sm text-slate-500">… et {accepting.length - 6} autres.</p>}
           </Section>
         </>
-      ) : insurance ? (
+      ) : insurance && !partners.some((p) => p.id === insurance.insurerId) ? (
         <Notice tone="blue" icon={<Handshake size={16} />} className="mb-5">
           Aucun assureur partenaire n'est encore référencé dans PHARMA CI : vos garanties (taux, plafond) et la liste des pharmacies
           conventionnées ne peuvent pas être affichées. Renseignez-vous directement auprès de votre assureur.
@@ -138,67 +141,18 @@ function MyInsurance() {
   )
 }
 
-function Marketplace() {
-  const [selected, setSelected] = useState<InsuranceT | null>(null)
-
-  if (INSURANCES.length === 0) {
-    return (
-      <EmptyState
-        icon={<Handshake />}
-        title="Aucun assureur partenaire pour le moment"
-        text="Le comparateur PHARMA ASSUR sera proposé avec les assureurs partenaires, dans le respect de la réglementation des assurances. Aucune offre n'est affichée tant qu'elle n'a pas été fournie et vérifiée par un assureur."
-      />
-    )
-  }
-
-  return (
-    <>
-      <Notice tone="blue" className="mb-4">
-        Offres communiquées par les assureurs partenaires. Les garanties réelles sont définies par le contrat de l'assureur.
-      </Notice>
-      <div className="space-y-3">
-        {INSURANCES.map((i) => (
-          <Card key={i.id}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0"><p className="font-bold">{i.name}</p><p className="text-xs text-slate-500">{i.coverage}</p></div>
-              <span className="shrink-0 rounded-xl bg-brand-50 px-2.5 py-1 text-lg font-extrabold text-brand-700">{i.rate} %</span>
-            </div>
-            <p className="mt-2 text-sm"><span className="text-slate-500">Plafond : </span><b>{fcfa(i.ceiling)}</b> / an</p>
-            <p className="text-sm"><span className="text-slate-500">Réseau : </span>{i.network}</p>
-            <Button size="sm" variant="outline" className="mt-3" onClick={() => setSelected(i)}>Voir les garanties</Button>
-          </Card>
-        ))}
-      </div>
-
-      <Modal open={!!selected} onClose={() => setSelected(null)} title={selected ? `Garanties — ${selected.name}` : ''}>
-        {selected && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600">{selected.coverage}</p>
-            <Coverage ins={selected} />
-            <div>
-              <p className="mb-2 text-sm font-bold">Services couverts</p>
-              <ul className="space-y-1.5">
-                {selected.services.map((s) => <li key={s} className="flex items-center gap-2 text-sm"><BadgeCheck size={16} className="text-brand-600" />{s}</li>)}
-              </ul>
-            </div>
-          </div>
-        )}
-      </Modal>
-    </>
-  )
-}
-
 export default function Insurance() {
-  const [tab, setTab] = useState<Tab>('mon')
+  const hasInsurance = useStore((s) => !!s.insurance)
+  const [tab, setTab] = useState<Tab>(hasInsurance ? 'mon' : 'trouver')
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="PHARMA ASSUR" subtitle="Votre assurance santé" icon={<ShieldPlus size={22} />} />
+      <PageHeader title="PHARMA ASSUR" subtitle="Trouvez et gérez votre assurance santé" icon={<ShieldPlus size={22} />} />
       <div className="mb-4">
-        <Chips value={tab} onChange={setTab} options={[{ value: 'mon', label: '🪪 Mon assurance' }, { value: 'marketplace', label: '🛒 Offres (à venir)' }]} />
+        <Chips value={tab} onChange={setTab} options={[{ value: 'trouver', label: '🔎 Trouver une assurance' }, { value: 'mon', label: '🪪 Mon assurance' }]} />
       </div>
-      {tab === 'mon' ? <MyInsurance /> : <Marketplace />}
+      {tab === 'mon' ? <MyInsurance /> : <FindInsurance />}
       <p className="mt-4 text-center text-xs text-slate-400">
-        {INSURANCES.length === 0 ? 'Aucun assureur partenaire pour le moment. ' : ''}<Link to="/cmu" className="underline">PHARMA CMU</Link>
+        <Link to="/cmu" className="underline">PHARMA CMU</Link>
       </p>
     </div>
   )

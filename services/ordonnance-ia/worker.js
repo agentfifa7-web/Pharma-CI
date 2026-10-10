@@ -22,7 +22,7 @@
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 9
+const VERSION = 10
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
@@ -118,6 +118,14 @@ export default {
       if ((request.headers.get('X-Admin-Code') ?? '') !== env.ADMIN_CODE) return json({ error: 'Code administrateur incorrect' }, 401)
       return json({ admin: true })
     }
+    if (url.pathname.startsWith('/partners')) {
+      if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
+      try {
+        return await handlePartners(request, env, url, json)
+      } catch (e) {
+        return json({ error: `Erreur de la base de données : ${String(e?.message ?? e).slice(0, 200)}` }, 500)
+      }
+    }
     if (url.pathname.startsWith('/missions') || url.pathname.startsWith('/agents')) {
       if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
       try {
@@ -144,6 +152,7 @@ export default {
             missions: await count('SELECT COUNT(*) AS n FROM missions'),
             missionsEnAttente: await count("SELECT COUNT(*) AS n FROM missions WHERE status = 'payee'"),
             agents: await count('SELECT COUNT(*) AS n FROM agents'),
+            assureurs: await count('SELECT COUNT(*) AS n FROM partners'),
           }
         } catch (e) {
           info.base = `erreur : ${String(e?.message ?? e).slice(0, 200)}`
@@ -350,6 +359,7 @@ async function ensureSchema(db) {
     'CREATE TABLE IF NOT EXISTS missions (id TEXT PRIMARY KEY, rev INTEGER NOT NULL, status TEXT NOT NULL, token TEXT NOT NULL, otp TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
   ).run()
   await db.prepare('CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)').run()
+  await db.prepare('CREATE TABLE IF NOT EXISTS partners (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)').run()
   schemaReady = true
 }
 
@@ -472,6 +482,47 @@ async function handleAgents(request, env, url, json) {
   }
   if (request.method === 'DELETE') {
     await env.DB.prepare('DELETE FROM agents WHERE id = ?').bind(id).run()
+    return json({ ok: true })
+  }
+  return json({ error: 'Méthode non autorisée' }, 405)
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Assureurs partenaires (rubrique « Trouver une assurance »). Lecture publique ; ajout, modification
+ * et suppression réservés à l'administratrice (code ADMIN_CODE).
+ *
+ *  GET    /partners       liste des assureurs et de leurs produits
+ *  PUT    /partners/:id   { partner } crée ou met à jour un assureur
+ *  DELETE /partners/:id   retire un assureur
+ * ---------------------------------------------------------------------------------------------- */
+const MAX_PARTNER_BYTES = 60_000
+
+async function handlePartners(request, env, url, json) {
+  if (!env.DB) return json({ error: "La base de données n'est pas encore activée (liaison D1 « DB »)." }, 503)
+  await ensureSchema(env.DB)
+  const id = decodeURIComponent(url.pathname.split('/')[2] ?? '')
+
+  if (request.method === 'GET' && !id) {
+    const { results } = await env.DB.prepare('SELECT data, updated_at FROM partners ORDER BY created_at').all()
+    return json({ partners: results.map((r) => ({ ...JSON.parse(r.data), updatedAt: new Date(r.updated_at).toISOString() })) })
+  }
+  if (!env.ADMIN_CODE) return json({ error: "Le code administrateur n'est pas encore configuré (secret ADMIN_CODE chez Cloudflare)." }, 503)
+  if ((request.headers.get('X-Admin-Code') ?? '') !== env.ADMIN_CODE) return json({ error: 'Code administrateur incorrect' }, 401)
+  if (!/^ins-[A-Za-z0-9]{4,40}$/.test(id)) return json({ error: 'Assureur invalide' }, 400)
+
+  if (request.method === 'PUT') {
+    const p = (await request.json().catch(() => null))?.partner
+    if (!p || p.id !== id || typeof p.name !== 'string' || !p.name.trim() || !Array.isArray(p.products)) return json({ error: 'Assureur invalide' }, 400)
+    const { updatedAt: _u, ...rest } = p
+    const data = JSON.stringify(rest)
+    if (data.length > MAX_PARTNER_BYTES) return json({ error: 'Fiche assureur trop longue' }, 413)
+    const now = Date.now()
+    await env.DB.prepare('INSERT INTO partners (id, data, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at')
+      .bind(id, data, now, now).run()
+    return json({ ok: true })
+  }
+  if (request.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM partners WHERE id = ?').bind(id).run()
     return json({ ok: true })
   }
   return json({ error: 'Méthode non autorisée' }, 405)

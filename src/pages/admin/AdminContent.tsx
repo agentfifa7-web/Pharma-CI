@@ -132,7 +132,7 @@ export default function AdminContent() {
 
       {tab === 'assurances' && (
         INSURANCES.length === 0 ? (
-          <EmptyState icon={<Handshake />} title="Aucun assureur partenaire" text="Les offres seront ajoutées à partir des données vérifiées fournies par les assureurs partenaires." />
+          <EmptyState icon={<Handshake />} title="Assureurs partenaires" text="Les assureurs partenaires et leurs produits se gèrent dans Admin → Assurances." action={<Link to="/admin/assurances" className="font-semibold text-brand-700 hover:underline">Ouvrir Admin → Assurances</Link>} />
         ) : (
           <DataTable head={['Assureur', 'Couverture', 'Taux', 'Plafond / an', 'Réseau', 'Services', '']}>
             {INSURANCES.map((i) => (

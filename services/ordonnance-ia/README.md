@@ -40,7 +40,7 @@ Après la publication, la page « Envoyer une ordonnance » lit les ordonnances 
 ## Mettre à jour le service
 Quand `worker.js` change dans ce dépôt, il faut recoller le code chez Cloudflare (la clé, elle, est conservée) :
 **Workers & Pages** → `ordonnance-ia` → **Edit code** → tout effacer → coller le nouveau `worker.js` → **Deploy**.
-L'adresse du service affiche alors le numéro de version (`"version":9`).
+L'adresse du service affiche alors le numéro de version (`"version":10`).
 
 ## Missions partagées entre patients et agents (base de données)
 Sans cette base, une mission n'existe que sur le téléphone du patient : l'agent ne la reçoit pas sur son propre
@@ -72,6 +72,12 @@ l'administratrice seule (différent du code agent, au moins 8 caractères) → *
 alors `"adminCode":true`. Ensuite, ouvrir `https://www.pharma-ci.org/admin` sur son téléphone ou son ordinateur et
 saisir ce code : le bouton Admin apparaît sur cet appareil. Ce code vaut aussi code agent (agents et missions de tous
 les téléphones). Changer `ADMIN_CODE` chez Cloudflare ferme l'espace Admin sur tous les appareils.
+
+## Assureurs partenaires (« Trouver une assurance »)
+Les assureurs partenaires et leurs produits (nom, public visé, coût, prise en charge, plafond, services, conditions)
+sont gardés dans la même base. L'administratrice les ajoute dans `https://www.pharma-ci.org/admin/assurances`
+(code administrateur requis) ; les patients les voient dans **Assurances → Trouver une assurance**, avec les boutons
+Appeler, WhatsApp, e-mail et site de l'assureur. La rubrique `base` du diagnostic compte les `assureurs`.
 
 ## Diagnostic
 Ouvrir `https://ordonnance-ia.agentfifa7.workers.dev/?diagnostic` : pour chaque modèle Gemini utilisé, la page fait une
