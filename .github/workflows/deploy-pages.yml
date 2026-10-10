@@ -39,6 +39,10 @@ jobs:
       # Avec un nom de domaine personnalisé (fichier public/CNAME), le site est servi à la racine « / » ;
       # sinon à l'adresse https://<compte>.github.io/<dépôt>/.
       - name: Build
+        env:
+          # Adresse du service de lecture des ordonnances par IA (services/ordonnance-ia), si configurée
+          # dans Settings → Secrets and variables → Actions → Variables.
+          VITE_ORDONNANCE_IA_URL: ${{ vars.ORDONNANCE_IA_URL }}
         run: |
           if [ -s public/CNAME ]; then BASE=/; else BASE=/${{ github.event.repository.name }}/; fi
           npx tsc -b && npx vite build --base="$BASE"

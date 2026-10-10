@@ -1,8 +1,15 @@
 import type { Medication, PrescriptionLine } from '../types'
 import { MEDICATIONS } from './medications'
+import { imagePreview } from '../lib/crypto'
 
 /**
- * Lecture d'ordonnance par OCR (tesseract.js, exécuté dans le navigateur).
+ * Lecture d'ordonnance.
+ *
+ * 1. Lecture par IA (recommandée, sait lire l'écriture manuscrite) : si l'adresse du service
+ *    « ordonnance-ia » est configurée (VITE_ORDONNANCE_IA_URL ou ORDONNANCE_IA_URL ci-dessous), les photos
+ *    (et PDF) sont envoyées à ce service (services/ordonnance-ia), qui interroge un modèle de vision.
+ * 2. Sinon, ou si le service ne répond pas : OCR tesseract.js exécuté dans le navigateur
+ *    (efficace sur le texte imprimé, mais incapable de lire une écriture manuscrite).
  *
  * Le texte est lu tel quel sur le document : chaque ligne retenue garde son libellé EXACT
  * (jamais reformulé). Un rapprochement avec la base PHARMA MED est proposé à titre indicatif
@@ -13,7 +20,14 @@ import { MEDICATIONS } from './medications'
  * à la première utilisation depuis le CDN par défaut de tesseract.js, puis mis en cache par le navigateur.
  */
 
+/** Adresse du service de lecture par IA (Cloudflare Worker). Vide = lecture par IA désactivée. */
+export const ORDONNANCE_IA_URL = ''
+const IA_URL = ((import.meta.env?.VITE_ORDONNANCE_IA_URL as string | undefined) || ORDONNANCE_IA_URL).trim()
+export const aiReadingEnabled = () => !!IA_URL
+
 export type OcrResult = {
+  /** Moteur utilisé : « ia » (modèle de vision) ou « ocr » (tesseract.js). */
+  engine: 'ia' | 'ocr'
   /** Texte brut lu sur l'ensemble des pages. */
   text: string
   lines: PrescriptionLine[]
@@ -35,9 +49,59 @@ const STATUS_FR: Record<string, string> = {
 const isPdf = (f: File) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
 
 export async function readPrescription(files: File[], onProgress?: (p: number, status: string) => void): Promise<OcrResult> {
+  if (IA_URL) {
+    try {
+      return await readWithAi(files, onProgress)
+    } catch {
+      // Service indisponible (hors connexion, quota atteint…) : repli sur l'OCR du navigateur.
+    }
+  }
+  return readWithOcr(files, onProgress)
+}
+
+/** Type d'une ligne renvoyée par le service de lecture par IA. */
+export type AiLine = { texte?: string; nom?: string; dosage?: string; forme?: string; posologie?: string; duree?: string; quantite?: number; confiance?: number }
+
+const toBase64 = (file: Blob) =>
+  new Promise<string>((res, rej) => {
+    const r = new FileReader()
+    r.onload = () => res(String(r.result).split(',')[1] ?? '')
+    r.onerror = () => rej(r.error)
+    r.readAsDataURL(file)
+  })
+
+async function readWithAi(files: File[], onProgress?: (p: number, status: string) => void): Promise<OcrResult> {
+  const report = (p: number, status: string) => onProgress?.(p, status)
+  report(0.05, 'Préparation des photos')
+  // Photos réduites à 2000 px (lisibles, mais légères à envoyer) ; PDF envoyés tels quels.
+  const payload = await Promise.all(
+    files.map(async (f) => {
+      if (isPdf(f)) return { mimeType: 'application/pdf', data: await toBase64(f) }
+      const url = await imagePreview(f, 2000).catch(() => undefined)
+      return url ? { mimeType: 'image/jpeg', data: url.split(',')[1] ?? '' } : { mimeType: f.type || 'image/jpeg', data: await toBase64(f) }
+    }),
+  )
+  report(0.25, 'Lecture de l\'écriture par l\'IA')
+  let tick = 0.25
+  const timer = setInterval(() => report((tick = Math.min(0.9, tick + 0.04)), 'Lecture de l\'écriture par l\'IA'), 700)
+  try {
+    const res = await fetch(IA_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: payload }) })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const body = (await res.json()) as { lines?: AiLine[] }
+    if (!Array.isArray(body.lines)) throw new Error('Réponse invalide')
+    report(1, 'Lecture terminée')
+    const lines = linesFromAi(body.lines)
+    const text = body.lines.map((l) => [l.texte, l.posologie, l.duree].filter(Boolean).join(' — ')).join('\n')
+    return { engine: 'ia', text, lines, unsupported: [] }
+  } finally {
+    clearInterval(timer)
+  }
+}
+
+async function readWithOcr(files: File[], onProgress?: (p: number, status: string) => void): Promise<OcrResult> {
   const images = files.filter((f) => !isPdf(f))
   const unsupported = files.filter(isPdf).map((f) => f.name)
-  if (!images.length) return { text: '', lines: [], unsupported }
+  if (!images.length) return { engine: 'ocr', text: '', lines: [], unsupported }
 
   let current = 0
   const report = (p: number, status: string) => onProgress?.(Math.min(1, Math.max(0, p)), status)
@@ -63,7 +127,7 @@ export async function readPrescription(files: File[], onProgress?: (p: number, s
   }
   report(1, 'Lecture terminée')
   const text = texts.join('\n')
-  return { text, lines: linesFromText(text), unsupported }
+  return { engine: 'ocr', text, lines: linesFromText(text), unsupported }
 }
 
 // ---------------------------------------------------------------------------
@@ -88,7 +152,7 @@ const doseKey = (s?: string) => {
   return m ? `${m[1]!.replace(',', '.')}${m[2]!.toUpperCase().replace('MCG', 'UG')}` : undefined
 }
 
-type Index = { size: number; byWord: Map<string, Medication[]>; byPrefix: Map<string, string[]> }
+type Index = { size: number; byWord: Map<string, Medication[]>; byPrefix: Map<string, string[]>; byDci: Map<string, Medication[]> }
 let INDEX: Index | null = null
 
 /** Index « premier mot du nom commercial » → produits (recalculé si la base a changé). */
@@ -109,7 +173,17 @@ function index(): Index {
     if (list) list.push(w)
     else byPrefix.set(k, [w])
   }
-  INDEX = { size: MEDICATIONS.length, byWord, byPrefix }
+  // DCI d'un seul principe actif (ex. « PARACETAMOL ») → produits : sert quand l'ordonnance prescrit en DCI.
+  const byDci = new Map<string, Medication[]>()
+  for (const m of MEDICATIONS) {
+    if (!m.dci || m.dci.includes('+')) continue
+    const k = words(m.dci).join(' ')
+    if (!k) continue
+    const list = byDci.get(k)
+    if (list) list.push(m)
+    else byDci.set(k, [m])
+  }
+  INDEX = { size: MEDICATIONS.length, byWord, byPrefix, byDci }
   return INDEX
 }
 
@@ -203,6 +277,94 @@ export function linesFromText(text: string): PrescriptionLine[] {
       medicationId: med?.id,
       dosage: doseMatch ? doseMatch[0] : (med?.dosage ?? ''),
       quantity: 1,
+    })
+  })
+  return out
+}
+
+/** Distance d'édition (Levenshtein) bornée : renvoie max + 1 dès que la borne est dépassée. */
+function editDistance(a: string, b: string, max: number) {
+  if (Math.abs(a.length - b.length) > max) return max + 1
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]
+    let rowMin = i
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1))
+      rowMin = Math.min(rowMin, cur[j]!)
+    }
+    if (rowMin > max) return max + 1
+    prev = cur
+  }
+  return prev[b.length]!
+}
+
+/** Tolérance selon la longueur du mot : 0 erreur sous 5 lettres, 1 jusqu'à 7, 2 au-delà. */
+const tolerance = (w: string) => (w.length < 5 ? 0 : w.length < 8 ? 1 : 2)
+
+/** Rapprochement d'un médicament lu par l'IA (nom commercial ou DCI) avec la base PHARMA MED. */
+export function matchMedication(name: string, dosage?: string, form?: string): Medication | undefined {
+  const idx = index()
+  const tokens = words(`${name} ${form ?? ''}`)
+  const nameTokens = words(name).filter((t) => !/^\d/.test(t))
+  const dose = doseKey(dosage) ?? doseKey(name)
+
+  // 1. Nom commercial (premier mot, avec tolérance aux fautes de lecture).
+  let brand = findBrandWord(nameTokens, idx)
+  if (!brand) {
+    for (const t of nameTokens) {
+      const tol = tolerance(t)
+      if (!tol || GENERIC.has(t)) continue
+      let best: [string, number] | undefined
+      for (const w of idx.byPrefix.get(t.slice(0, 2)) ?? []) {
+        const d = editDistance(t, w, tol)
+        if (d <= tol && (!best || d < best[1])) best = [w, d]
+      }
+      if (best) {
+        brand = best[0]
+        break
+      }
+    }
+  }
+  const byBrand = brand ? idx.byWord.get(brand)! : []
+
+  // 2. DCI (ex. « Paracétamol 1000 mg ») : produits de même DCI. Les deux listes sont comparées ensemble
+  //    pour retenir le meilleur dosage (« PARACETAMOL 1000 mg » → un produit dosé à 1000 mg).
+  const key = nameTokens.filter((t) => !GENERIC.has(t)).join(' ')
+  let byDci = key ? idx.byDci.get(key) : undefined
+  if (key && !byDci && !brand) {
+    const tol = tolerance(key)
+    let best: [string, number] | undefined
+    for (const k of idx.byDci.keys()) {
+      const d = editDistance(key, k, tol)
+      if (d <= tol && (!best || d < best[1])) best = [k, d]
+    }
+    byDci = best ? idx.byDci.get(best[0]) : undefined
+  }
+  const candidates = [...byBrand, ...(byDci ?? [])]
+  return candidates.length ? bestMatch(candidates, tokens, dose) : undefined
+}
+
+/** Transforme les lignes lues par l'IA en lignes d'ordonnance (libellé = texte lu sur le document). */
+export function linesFromAi(items: AiLine[]): PrescriptionLine[] {
+  const out: PrescriptionLine[] = []
+  const seen = new Set<string>()
+  items.forEach((it, n) => {
+    const label = (it.texte || [it.nom, it.dosage, it.forme].filter(Boolean).join(' ')).trim()
+    const name = (it.nom || it.texte || '').trim()
+    if (label.length < 2 || !name) return
+    const key = norm(label)
+    if (seen.has(key)) return
+    seen.add(key)
+    const med = matchMedication(name, it.dosage, it.forme)
+    const instructions = [it.posologie, it.duree && `pendant ${it.duree}`.replace(/^pendant pendant/, 'pendant')].filter(Boolean).join(', ')
+    out.push({
+      id: `ln-ia-${n}-${out.length}`,
+      label,
+      medicationId: med?.id,
+      dosage: it.dosage?.trim() || med?.dosage || '',
+      quantity: Math.max(1, Math.round(Number(it.quantite) || 1)),
+      instructions: instructions || undefined,
     })
   })
   return out
