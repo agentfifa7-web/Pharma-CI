@@ -10,7 +10,7 @@ import MapView, { type MapMarker } from '../../components/MapView'
 import { pharmacyById } from '../../services/pharmacyProvider'
 import { VEHICLE_LABEL } from '../../data/agents'
 import { dateTimeFr, fcfa, initials, timeFr } from '../../lib/format'
-import { MISSION_STEPS, MISSION_TONE, downloadText, missionStepIndex } from '../../data/statusUi'
+import { MISSION_STEPS, MISSION_TONE, downloadText, missionStepIndex, missionAgent } from '../../data/statusUi'
 
 const CANCEL_REASONS = [
   'Je n\'ai plus besoin des médicaments',
@@ -30,7 +30,7 @@ export default function MissionTracking() {
   const rateMission = useStore((s) => s.rateMission)
 
   const m = missions.find((x) => x.id === id)
-  const agent = agents.find((a) => a.id === m?.agentId)
+  const agent = missionAgent(m, agents)
   const pharmacy = pharmacyById(m?.pharmacyId)
   const prescription = prescriptions.find((p) => p.id === m?.prescriptionId)
 
@@ -274,7 +274,11 @@ export default function MissionTracking() {
             ) : m.status === 'payee' ? (
               <Card className="flex items-center gap-3">
                 <span className="relative grid h-12 w-12 place-items-center text-accent-500"><span className="pulse-ring absolute inset-0 rounded-full" /><span className="relative text-2xl">🛵</span></span>
-                <div><p className="font-bold">Recherche de l'agent le plus proche…</p><p className="text-sm text-slate-500">Affectation automatique en cours</p></div>
+                {m.remote ? (
+                  <div><p className="font-bold">Mission transmise aux agents PHARMA CI</p><p className="text-sm text-slate-500">{m.syncPending ? 'Envoi en cours… (vérifiez votre connexion internet)' : 'Un agent va l\'accepter. Vous serez prévenu ici.'}</p></div>
+                ) : (
+                  <div><p className="font-bold">Recherche de l'agent le plus proche…</p><p className="text-sm text-slate-500">Affectation automatique en cours</p></div>
+                )}
               </Card>
             ) : (
               <Card><p className="text-sm text-slate-500">Aucun agent affecté.</p></Card>

@@ -1,4 +1,4 @@
-import type { Mission, MissionStatus, PrescriptionStatus } from '../types'
+import type { Agent, Mission, MissionStatus, PrescriptionStatus } from '../types'
 
 /** Tonalités compatibles avec <Badge tone> (src/components/ui.tsx). */
 export type UiTone = 'green' | 'orange' | 'red' | 'slate' | 'blue' | 'violet'
@@ -82,4 +82,18 @@ export function downloadText(filename: string, content: string, type = 'text/pla
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+/**
+ * Agent d'une mission. Pour une mission partagée, le nom et le téléphone viennent de la mission elle-même
+ * (l'agent travaille sur son propre téléphone, inconnu de cet appareil).
+ */
+export function missionAgent(m: Mission | undefined, agents: Agent[]): Agent | undefined {
+  if (!m?.agentId) return undefined
+  const known = agents.find((a) => a.id === m.agentId)
+  if (!m.remote || !m.agentName) return known
+  return {
+    id: m.agentId, name: m.agentName, phone: m.agentPhone ?? '', photo: '', zone: known?.zone ?? '', vehicle: known?.vehicle ?? 'moto',
+    position: m.agentPosition ?? m.deliveryPosition, available: true, activeMissions: 0, rating: known?.rating ?? 0, completed: known?.completed ?? 0, earnings: 0,
+  }
 }

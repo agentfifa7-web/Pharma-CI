@@ -11,13 +11,17 @@
  *  - GEMINI_API_KEY   (secret, obligatoire) clé créée sur https://aistudio.google.com/apikey
  *  - GEMINI_MODEL     (facultatif) modèle Gemini essayé en premier (sinon gemini-flash-latest)
  *  - ALLOWED_ORIGINS  (facultatif) origines autorisées, séparées par des virgules
+ *  - AGENT_CODE       (secret, pour les missions) code d'accès remis aux agents de livraison
+ *  - DB               (liaison D1, pour les missions) base de données partagée entre patients et agents
  *
  * Requête : POST JSON { files: [{ mimeType: "image/jpeg" | "application/pdf" | …, data: "<base64>" }] }
  * Réponse : { lines: [{ texte, nom, dosage, forme, posologie, duree, quantite, confiance }] }
+ *
+ * Missions (commandes) partagées entre l'application du patient et celle de l'agent, voir handleMissions.
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 5
+const VERSION = 6
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
@@ -95,18 +99,27 @@ export default {
     const allowed = (env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()) : DEFAULT_ORIGINS).includes(origin)
     const cors = {
       'Access-Control-Allow-Origin': allowed ? origin : DEFAULT_ORIGINS[0],
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Agent-Code, X-Mission-Token',
       'Access-Control-Max-Age': '86400',
       Vary: 'Origin',
     }
     const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8' } })
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
+    const url = new URL(request.url)
+    if (url.pathname.startsWith('/missions')) {
+      if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
+      try {
+        return await handleMissions(request, env, url, json)
+      } catch (e) {
+        return json({ error: `Erreur de la base de données : ${String(e?.message ?? e).slice(0, 200)}` }, 500)
+      }
+    }
     if (request.method === 'GET') {
-      const info = { ok: true, service: 'PHARMA CI — lecture des ordonnances', version: VERSION, configured: !!env.GEMINI_API_KEY }
+      const info = { ok: true, service: 'PHARMA CI — lecture des ordonnances', version: VERSION, configured: !!env.GEMINI_API_KEY, missions: !!env.DB, agentCode: !!env.AGENT_CODE }
       // https://…workers.dev/?diagnostic : vérifie la clé et la disponibilité de chaque modèle (petite question texte).
-      if (new URL(request.url).searchParams.has('diagnostic') && env.GEMINI_API_KEY) {
+      if (url.searchParams.has('diagnostic') && env.GEMINI_API_KEY) {
         const specs = [...plan(env), ...DIAGNOSTIC_EXTRA.filter((d) => !plan(env).some((p) => p.model === d.model))]
         const [models, available] = await Promise.all([Promise.all(specs.map((spec) => ping(env.GEMINI_API_KEY, spec))), listFlashModels(env.GEMINI_API_KEY)])
         info.models = models
@@ -291,4 +304,103 @@ async function listFlashModels(apiKey) {
   } catch {
     return 'indisponible'
   }
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Missions partagées (base Cloudflare D1, liaison « DB »).
+ *
+ *  POST /missions              (patient)  crée la mission { mission } ; mission.token = secret du patient
+ *  GET  /missions/:id          (patient : en-tête X-Mission-Token ; agent : X-Agent-Code)
+ *  PUT  /missions/:id          (patient ou agent) { mission, baseRev, otp? } ; refusé (409) si la mission a changé entre-temps
+ *  GET  /missions              (agent)    missions en cours et missions des 7 derniers jours
+ *
+ * Le secret du patient et le code de livraison (OTP) ne sont jamais envoyés aux agents : l'agent saisit le code
+ * donné par le patient et le service le vérifie lui-même avant d'accepter le statut « livrée ».
+ * ---------------------------------------------------------------------------------------------- */
+const MAX_MISSION_BYTES = 1_800_000
+let schemaReady = false
+
+async function ensureSchema(db) {
+  if (schemaReady) return
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS missions (id TEXT PRIMARY KEY, rev INTEGER NOT NULL, status TEXT NOT NULL, token TEXT NOT NULL, otp TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+  ).run()
+  schemaReady = true
+}
+
+/** Mission telle qu'enregistrée : sans le secret du patient ni le code de livraison. */
+function stripSecrets(m) {
+  const { token: _t, otp: _o, rev: _r, ...rest } = m
+  return rest
+}
+
+function view(row, forPatient) {
+  const m = JSON.parse(row.data)
+  m.rev = row.rev
+  if (forPatient) m.otp = row.otp
+  return m
+}
+
+async function handleMissions(request, env, url, json) {
+  if (!env.DB) return json({ error: "La base de données des missions n'est pas encore activée (liaison D1 « DB »)." }, 503)
+  await ensureSchema(env.DB)
+  const id = decodeURIComponent(url.pathname.split('/')[2] ?? '')
+  const agentCode = request.headers.get('X-Agent-Code') ?? ''
+  const isAgent = !!env.AGENT_CODE && agentCode === env.AGENT_CODE
+  const token = request.headers.get('X-Mission-Token') ?? ''
+
+  if (request.method === 'GET' && !id) {
+    if (!env.AGENT_CODE) return json({ error: "Le code des agents n'est pas encore configuré (secret AGENT_CODE)." }, 503)
+    if (!isAgent) return json({ error: 'Code agent incorrect' }, 401)
+    const since = Date.now() - 7 * 24 * 3600 * 1000
+    const { results } = await env.DB.prepare(
+      "SELECT rev, data FROM missions WHERE status NOT IN ('livree', 'annulee') OR updated_at > ? ORDER BY created_at DESC LIMIT 200",
+    ).bind(since).all()
+    return json({ missions: results.map((r) => view(r, false)) })
+  }
+
+  if (request.method === 'POST' && !id) {
+    const body = await request.json().catch(() => null)
+    const m = body?.mission
+    if (!m || !/^MIS-[A-Z0-9]{4,12}$/.test(m.id ?? '') || typeof m.token !== 'string' || m.token.length < 16 || typeof m.otp !== 'string') {
+      return json({ error: 'Mission invalide' }, 400)
+    }
+    if (m.status !== 'payee') return json({ error: 'Une nouvelle mission doit être au statut « payée »' }, 400)
+    const data = JSON.stringify(stripSecrets(m))
+    if (data.length > MAX_MISSION_BYTES) return json({ error: 'Mission trop volumineuse (photos)' }, 413)
+    const now = Date.now()
+    const res = await env.DB.prepare('INSERT OR IGNORE INTO missions (id, rev, status, token, otp, data, created_at, updated_at) VALUES (?, 1, ?, ?, ?, ?, ?, ?)')
+      .bind(m.id, m.status, m.token, m.otp, data, now, now).run()
+    if (!res.meta?.changes) return json({ error: 'Cette mission existe déjà' }, 409)
+    return json({ rev: 1 })
+  }
+
+  if (!id) return json({ error: 'Méthode non autorisée' }, 405)
+  const row = await env.DB.prepare('SELECT rev, status, token, otp, data FROM missions WHERE id = ?').bind(id).first()
+  if (!row) return json({ error: 'Mission introuvable' }, 404)
+  const isPatient = token.length >= 16 && token === row.token
+  if (!isPatient && !isAgent) return json({ error: 'Accès refusé' }, 401)
+
+  if (request.method === 'GET') return json({ mission: view(row, isPatient) })
+
+  if (request.method === 'PUT') {
+    const body = await request.json().catch(() => null)
+    const m = body?.mission
+    if (!m || m.id !== id) return json({ error: 'Mission invalide' }, 400)
+    if (body.baseRev !== row.rev) return json({ error: 'La mission a été modifiée entre-temps', mission: view(row, isPatient) }, 409)
+    // Seul le code donné par le patient permet à un agent de déclarer la mission livrée.
+    if (!isPatient && m.status === 'livree' && row.status !== 'livree' && String(body.otp ?? '').trim() !== row.otp) {
+      return json({ error: 'Code de livraison incorrect' }, 403)
+    }
+    const data = JSON.stringify(stripSecrets(m))
+    if (data.length > MAX_MISSION_BYTES) return json({ error: 'Mission trop volumineuse (photos)' }, 413)
+    const res = await env.DB.prepare('UPDATE missions SET rev = rev + 1, status = ?, data = ?, updated_at = ? WHERE id = ? AND rev = ?')
+      .bind(m.status, data, Date.now(), id, row.rev).run()
+    if (!res.meta?.changes) {
+      const fresh = await env.DB.prepare('SELECT rev, status, token, otp, data FROM missions WHERE id = ?').bind(id).first()
+      return json({ error: 'La mission a été modifiée entre-temps', mission: view(fresh, isPatient) }, 409)
+    }
+    return json({ rev: row.rev + 1 })
+  }
+  return json({ error: 'Méthode non autorisée' }, 405)
 }

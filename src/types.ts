@@ -158,6 +158,20 @@ export type Mission = {
   timeline: { at: string; status: MissionStatus | 'info'; label: string }[]
   rating?: Rating
   paymentMethod: string
+  // Mission partagée (base du service) : visible de l'agent sur son propre téléphone.
+  /** Mission enregistrée dans la base partagée (sinon : démonstration sur cet appareil). */
+  remote?: boolean
+  /** Version côté serveur (contrôle des modifications simultanées). */
+  rev?: number
+  /** Secret du patient pour cette mission (jamais transmis aux agents). */
+  token?: string
+  /** Modification locale pas encore envoyée (pas de réseau) : renvoyée automatiquement. */
+  syncPending?: boolean
+  patientPhone?: string
+  agentName?: string
+  agentPhone?: string
+  /** Copie de l'ordonnance utile à l'agent (lignes et photos). */
+  prescription?: Pick<Prescription, 'id' | 'lines' | 'previews' | 'fileNames'>
 }
 
 export type Rating = {

@@ -9,7 +9,8 @@ import { buildEstimate } from '../../lib/pricing'
 import { usePharmacies } from '../../lib/usePharmacies'
 import { dateTimeFr, fcfa } from '../../lib/format'
 import { medById } from '../../data/medications'
-import { MISSION_TONE, PAYMENT_METHODS, PRESCRIPTION_TONE, RELATION_LABEL } from '../../data/statusUi'
+import { sharedMissionsAvailable } from '../../lib/sync'
+import { MISSION_TONE, PAYMENT_METHODS, PRESCRIPTION_TONE, RELATION_LABEL, missionAgent } from '../../data/statusUi'
 
 export default function PrescriptionDetail() {
   const { id = '' } = useParams()
@@ -29,10 +30,12 @@ export default function PrescriptionDetail() {
 
   const p = prescriptions.find((x) => x.id === id)
   const mission = p?.missionId ? missions.find((m) => m.id === p.missionId) : undefined
-  const agent = mission?.agentId ? agents.find((a) => a.id === mission.agentId) : undefined
+  const agent = missionAgent(mission, agents)
   const profile = profiles.find((x) => x.id === p?.profileId)
 
   const [address, setAddress] = useState(user.address ?? '')
+  const [phone, setPhone] = useState(user.phone ?? '')
+  const setUser = useStore((s) => s.setUser)
   const [method, setMethod] = useState(PAYMENT_METHODS[0]!.id)
   const [paying, setPaying] = useState(false)
   const [zoom, setZoom] = useState<string | null>(null)
@@ -60,19 +63,22 @@ export default function PrescriptionDetail() {
   const canPay = p.confirmed && !p.locked && ['nouvelle', 'en_attente', 'annulee', 'renouvellement'].includes(p.status)
   const canRenew = (p.status === 'livree' || p.status === 'partiellement_executee') && (!mission || mission.status === 'livree')
 
-  const pay = () => {
-    if (!estimate || !address.trim()) return
+  const pay = async () => {
+    if (!estimate || !address.trim() || !phone.trim()) return
     setPaying(true)
-    setTimeout(() => {
-      const m = launchMission({
-        prescriptionId: p.id,
-        estimate: { medications: estimate.medications, service: estimate.service, delivery: estimate.delivery, total: estimate.total },
-        address: address.trim(),
-        position: user.position,
-        paymentMethod: method,
-      })
-      navigate(`/missions/${m.id}`)
-    }, 1500)
+    if (phone.trim() !== user.phone) setUser({ phone: phone.trim() })
+    // Mission partagée avec les agents si la base du service est activée (sinon : démonstration sur cet appareil).
+    const remote = await sharedMissionsAvailable()
+    const m = launchMission({
+      prescriptionId: p.id,
+      estimate: { medications: estimate.medications, service: estimate.service, delivery: estimate.delivery, total: estimate.total },
+      address: address.trim(),
+      position: user.position,
+      paymentMethod: method,
+      remote,
+      patientPhone: phone.trim(),
+    })
+    navigate(`/missions/${m.id}`)
   }
 
   const remove = () => {
@@ -211,6 +217,8 @@ export default function PrescriptionDetail() {
           <Card className="mt-3">
             <Input label="Adresse de livraison (obligatoire)" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Commune, quartier, rue, repère…" />
             {!address.trim() && <p className="mt-1 text-xs font-semibold text-amber-700">Saisissez l'adresse où l'agent doit livrer pour lancer la mission.</p>}
+            <Input label="Votre téléphone (obligatoire)" type="tel" inputMode="tel" className="mt-3" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Ex. 07 00 00 00 00" />
+            {!phone.trim() && <p className="mt-1 text-xs font-semibold text-amber-700">L'agent doit pouvoir vous appeler en cas de souci (médicament indisponible, prix, adresse).</p>}
             <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><MapPin size={12} /> {locationGranted ? 'Votre position GPS est utilisée pour le suivi.' : 'Localisation non activée : l\'agent se guidera sur l\'adresse saisie.'}</p>
 
             <p className="mt-4 mb-2 text-sm font-semibold text-slate-700">Moyen de paiement</p>
@@ -229,10 +237,10 @@ export default function PrescriptionDetail() {
               ))}
             </div>
 
-            <Button size="lg" variant="accent" className="mt-4 w-full" onClick={pay} disabled={!address.trim()}>
+            <Button size="lg" variant="accent" className="mt-4 w-full" onClick={() => void pay()} disabled={!address.trim() || !phone.trim() || paying}>
               <Rocket size={18} /> PAYER ET LANCER LA MISSION
             </Button>
-            <p className="mt-2 text-center text-xs text-slate-500">Un agent est affecté automatiquement. Votre ordonnance sera verrouillée pendant la mission.</p>
+            <p className="mt-2 text-center text-xs text-slate-500">Un agent PHARMA CI prend la mission et peut vous appeler en cas de souci. Votre ordonnance sera verrouillée pendant la mission.</p>
           </Card>
         </Section>
       )}

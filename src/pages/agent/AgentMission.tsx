@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  AlertTriangle, Ban, Camera, Check, CheckCircle2, ClipboardCheck, Clock, Hourglass, KeyRound, MapPin, Navigation, Pill, Receipt, Search, Store, Truck, Wallet, XCircle,
+  AlertTriangle, Ban, Camera, MessageCircle, Phone, Check, CheckCircle2, ClipboardCheck, Clock, Hourglass, KeyRound, MapPin, Navigation, Pill, Receipt, Search, Store, Truck, Wallet, XCircle,
 } from 'lucide-react'
 import type { LatLng, Mission, Pharmacy, Prescription } from '../../types'
 import { MISSION_LABEL, useStore } from '../../store/useStore'
@@ -14,7 +14,7 @@ import { distanceKm, directionsUrl, formatDistance } from '../../lib/geo'
 import { openInfo } from '../../lib/hours'
 import { imagePreview } from '../../lib/crypto'
 import { dateTimeFr, fcfa, normalize, timeFr } from '../../lib/format'
-import { MISSION_TONE, agentEarning } from '../../data/statusUi'
+import { MISSION_TONE, agentEarning, missionAgent } from '../../data/statusUi'
 
 export default function AgentMission() {
   const { id = '' } = useParams()
@@ -25,10 +25,11 @@ export default function AgentMission() {
   const setCurrentAgent = useStore((s) => s.setCurrentAgent)
   const agentArrive = useStore((s) => s.agentArrive)
   const startDelivery = useStore((s) => s.startDelivery)
+  const acceptMission = useStore((s) => s.acceptMission)
 
   const m = missions.find((x) => x.id === id)
-  const prescription = prescriptions.find((p) => p.id === m?.prescriptionId)
-  const assigned = agents.find((a) => a.id === m?.agentId)
+  const prescription = prescriptions.find((p) => p.id === m?.prescriptionId) ?? (m?.prescription as Prescription | undefined)
+  const assigned = missionAgent(m, agents)
   const pharmacy = pharmacyById(m?.pharmacyId)
   const [repick, setRepick] = useState(false)
 
@@ -66,16 +67,22 @@ export default function AgentMission() {
       {m.agentId && !isMine && (
         <Notice tone="orange" className="mb-4">
           Cette mission est affectée à <b>{assigned?.name}</b>.{' '}
-          <button onClick={() => setCurrentAgent(m.agentId!)} className="font-bold underline">Basculer sur cet agent (démo)</button>
+          {!m.remote && <button onClick={() => setCurrentAgent(m.agentId!)} className="font-bold underline">Basculer sur cet agent (démo)</button>}
         </Notice>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_24rem]">
         {/* Colonne action */}
         <div className="order-2 min-w-0 lg:order-1">
-          {m.status === 'payee' && (
+          {m.status === 'payee' && (m.remote ? (
+            <ActionCard step="Nouvelle mission" title="Acceptez-vous cette mission ?" icon={<ClipboardCheck size={18} />}>
+              <p className="text-sm text-slate-600">Livraison à <b>{m.deliveryAddress}</b>. Budget médicaments estimé : <b>{fcfa(m.estimate.medications)}</b>.</p>
+              <Button size="lg" variant="accent" className="mt-3 w-full" onClick={() => acceptMission(m.id)}><Check size={18} /> Accepter la mission</Button>
+              <p className="mt-2 text-center text-xs text-slate-500">Si un autre agent l'accepte avant vous, elle disparaîtra de votre liste.</p>
+            </ActionCard>
+          ) : (
             <Card className="mb-4 flex items-center gap-3"><Hourglass className="text-accent-500" /><div><p className="font-bold">En attente d'affectation</p><p className="text-sm text-slate-500">L'affectation automatique est en cours.</p></div></Card>
-          )}
+          ))}
 
           {isMine && m.status === 'agent_affecte' && (
             <ActionCard step="Étape 1" title="Choisissez une pharmacie proche du patient" icon={<Store size={18} />}>
@@ -195,6 +202,7 @@ export default function AgentMission() {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient</p>
               <p className="text-lg font-bold">{m.patientName.split(' ')[0]}</p>
               <p className="flex items-start gap-1.5 text-sm text-slate-600"><MapPin size={14} className="mt-0.5 shrink-0" /> {m.deliveryAddress}</p>
+              {isMine && <ContactPatient mission={m} />}
               <a href={directionsUrl(m.status === 'agent_affecte' || !pharmacy || m.status === 'en_route' || m.status === 'achat_effectue' ? m.deliveryPosition : pharmacy.position)} target="_blank" rel="noreferrer" className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">
                 <Navigation size={14} /> Itinéraire
               </a>
@@ -208,6 +216,26 @@ export default function AgentMission() {
           </Card>
         </aside>
       </div>
+    </div>
+  )
+}
+
+/** Contacter le patient (appel, WhatsApp, SMS) pour lui présenter la situation en cas de souci. */
+function ContactPatient({ mission }: { mission: Mission }) {
+  const phone = (mission.patientPhone ?? '').replace(/[^\d+]/g, '')
+  if (!phone) return <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">Le patient n'a pas laissé de numéro de téléphone.</p>
+  // Numéro ivoirien à 10 chiffres sans indicatif : ajouter 225 pour WhatsApp.
+  const intl = phone.startsWith('+') ? phone.slice(1) : phone.startsWith('00') ? phone.slice(2) : phone.length === 10 ? `225${phone}` : phone
+  const text = encodeURIComponent(`Bonjour, je suis l'agent PHARMA CI chargé de votre mission ${mission.id}. `)
+  return (
+    <div className="mt-3">
+      <p className="text-sm font-semibold">📞 {mission.patientPhone}</p>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        <a href={`tel:${phone}`} className="flex flex-col items-center gap-1 rounded-xl bg-brand-500 py-2 text-xs font-semibold text-white hover:bg-brand-600"><Phone size={16} />Appeler</a>
+        <a href={`https://wa.me/${intl}?text=${text}`} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1 rounded-xl bg-[#25D366] py-2 text-xs font-semibold text-white hover:opacity-90"><MessageCircle size={16} />WhatsApp</a>
+        <a href={`sms:${phone}?body=${text}`} className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 py-2 text-xs font-semibold hover:bg-slate-50"><MessageCircle size={16} />SMS</a>
+      </div>
+      <p className="mt-1.5 text-xs text-slate-500">En cas de souci (médicament indisponible, prix, adresse), appelez le patient pour lui présenter la situation.</p>
     </div>
   )
 }
@@ -407,14 +435,40 @@ function UnavailablePanel({ mission, onRepick }: { mission: Mission; onRepick: (
 
 function DeliveryPanel({ mission }: { mission: Mission }) {
   const confirmDelivery = useStore((s) => s.confirmDelivery)
+  const confirmDeliveryRemote = useStore((s) => s.confirmDeliveryRemote)
+  const setAgentPosition = useStore((s) => s.setAgentPosition)
+  const [sending, setSending] = useState(false)
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [checks, setChecks] = useState([false, false, false])
   const items = ['Médicaments remis', 'Facture originale de la pharmacie remise', 'Justificatif PHARMA CI remis']
   const ready = checks.every(Boolean) && code.trim().length === 4
 
-  const submit = () => {
-    if (!confirmDelivery(mission.id, code)) setError('Code incorrect. Demandez au patient le code affiché dans son application.')
+  // Mission partagée : la position GPS de l'agent est envoyée au patient (au plus toutes les 30 s).
+  useEffect(() => {
+    if (!mission.remote || !navigator.geolocation) return
+    let last = 0
+    const watch = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (Date.now() - last < 30_000) return
+        last = Date.now()
+        setAgentPosition(mission.id, { lat: pos.coords.latitude, lng: pos.coords.longitude })
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 20_000 },
+    )
+    return () => navigator.geolocation.clearWatch(watch)
+  }, [mission.id, mission.remote, setAgentPosition])
+
+  const submit = async () => {
+    if (!mission.remote) {
+      if (!confirmDelivery(mission.id, code)) setError('Code incorrect. Demandez au patient le code affiché dans son application.')
+      return
+    }
+    setSending(true)
+    const res = await confirmDeliveryRemote(mission.id, code)
+    setSending(false)
+    if (!res.ok) setError(res.error ?? 'Échec de la confirmation')
   }
 
   return (
@@ -444,7 +498,7 @@ function DeliveryPanel({ mission }: { mission: Mission }) {
         />
       </label>
       {error && <p className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
-      <Button size="lg" className="mt-3 w-full" disabled={!ready} onClick={submit}><CheckCircle2 size={18} /> Confirmer la livraison</Button>
+      <Button size="lg" className="mt-3 w-full" disabled={!ready || sending} onClick={() => void submit()}><CheckCircle2 size={18} /> {sending ? 'Vérification du code…' : 'Confirmer la livraison'}</Button>
       <p className="mt-2 text-center text-xs text-slate-500">Le code n'est visible que par le patient.</p>
       <Link to="/agent" className="mt-2 block text-center text-xs text-slate-400 hover:text-ink">Tableau de bord</Link>
     </ActionCard>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Activity, Ban, Bike, CheckCircle2, Copy, FileText, LayoutDashboard, MapPin, ShieldAlert, Wallet } from 'lucide-react'
 import { MISSION_LABEL, useStore } from '../../store/useStore'
 import { PHARMACIES } from '../../data/pharmacies'
-import { MISSION_TONE } from '../../data/statusUi'
+import { MISSION_TONE, missionAgent } from '../../data/statusUi'
 import { fcfa, relativeFr } from '../../lib/format'
 import MapView, { type MapMarker } from '../../components/MapView'
 import { Badge, PageHeader, Stat, cx } from '../../components/ui'
@@ -110,7 +110,7 @@ export default function AdminDashboard() {
               <tr key={m.id} className="hover:bg-slate-50">
                 <Td className="font-mono text-xs font-semibold">{m.id}</Td>
                 <Td>{m.patientName}</Td>
-                <Td>{agents.find((a) => a.id === m.agentId)?.name ?? <span className="text-slate-400">—</span>}</Td>
+                <Td>{missionAgent(m, agents)?.name ?? <span className="text-slate-400">—</span>}</Td>
                 <Td><Badge tone={MISSION_TONE[m.status]}>{MISSION_LABEL[m.status]}</Badge></Td>
                 <Td className="tabular-nums">{fcfa(m.estimate.total)}</Td>
                 <Td className="text-slate-500">{relativeFr(m.createdAt)}</Td>
