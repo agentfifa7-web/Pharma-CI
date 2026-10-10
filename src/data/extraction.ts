@@ -8,7 +8,9 @@ import { imagePreview } from '../lib/crypto'
  * 1. Lecture par IA (recommandée, sait lire l'écriture manuscrite) : si l'adresse du service
  *    « ordonnance-ia » est configurée (VITE_ORDONNANCE_IA_URL ou ORDONNANCE_IA_URL ci-dessous), les photos
  *    (et PDF) sont envoyées à ce service (services/ordonnance-ia), qui interroge un modèle de vision.
- * 2. Sinon, ou si le service ne répond pas : OCR tesseract.js exécuté dans le navigateur
+ *    En cas d'échec (service saturé, délai dépassé), un message clair est renvoyé et le patient peut relancer
+ *    la lecture ou saisir les lignes : on ne bascule pas sur l'OCR, incapable de lire une écriture manuscrite.
+ * 2. Si le service n'est pas configuré : OCR tesseract.js exécuté dans le navigateur
  *    (efficace sur le texte imprimé, mais incapable de lire une écriture manuscrite).
  *
  * Le texte est lu tel quel sur le document : chaque ligne retenue garde son libellé EXACT
@@ -33,6 +35,8 @@ export type OcrResult = {
   lines: PrescriptionLine[]
   /** Documents non lus automatiquement (PDF) : saisie manuelle requise. */
   unsupported: string[]
+  /** Échec de la lecture par IA (message à afficher au patient). */
+  error?: string
 }
 
 const STATUS_FR: Record<string, string> = {
@@ -49,14 +53,13 @@ const STATUS_FR: Record<string, string> = {
 const isPdf = (f: File) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
 
 export async function readPrescription(files: File[], onProgress?: (p: number, status: string) => void): Promise<OcrResult> {
-  if (IA_URL) {
-    try {
-      return await readWithAi(files, onProgress)
-    } catch {
-      // Service indisponible (hors connexion, quota atteint…) : repli sur l'OCR du navigateur.
-    }
+  if (!IA_URL) return readWithOcr(files, onProgress)
+  try {
+    return await readWithAi(files, onProgress)
+  } catch (e) {
+    onProgress?.(1, 'Lecture interrompue')
+    return { engine: 'ia', text: '', lines: [], unsupported: [], error: e instanceof Error ? e.message : String(e) }
   }
-  return readWithOcr(files, onProgress)
 }
 
 /** Type d'une ligne renvoyée par le service de lecture par IA. */
@@ -70,28 +73,67 @@ const toBase64 = (file: Blob) =>
     r.readAsDataURL(file)
   })
 
+/** Délai maximal d'attente du service (le service lui-même abandonne à 55 s). */
+const AI_TIMEOUT_MS = 70_000
+
+class AiError extends Error {
+  retry: boolean
+  constructor(message: string, retry: boolean) {
+    super(message)
+    this.retry = retry
+  }
+}
+
+async function callAi(payload: { mimeType: string; data: string }[]): Promise<AiLine[]> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS)
+  let res: Response
+  try {
+    res = await fetch(IA_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: payload }), signal: ctrl.signal })
+  } catch {
+    throw ctrl.signal.aborted
+      ? new AiError('La lecture a pris trop de temps. Vérifiez votre connexion puis relancez la lecture.', false)
+      : new AiError('Pas de connexion au service de lecture. Vérifiez votre connexion internet puis relancez la lecture.', true)
+  } finally {
+    clearTimeout(timer)
+  }
+  const body = (await res.json().catch(() => ({}))) as { lines?: AiLine[]; error?: string }
+  if (res.ok && Array.isArray(body.lines)) return body.lines
+  const reason = body.error ?? `erreur ${res.status}`
+  throw new AiError(`La lecture automatique a échoué (${reason}). Relancez la lecture ou saisissez les lignes.`, res.status >= 500 && res.status !== 504)
+}
+
 async function readWithAi(files: File[], onProgress?: (p: number, status: string) => void): Promise<OcrResult> {
   const report = (p: number, status: string) => onProgress?.(p, status)
   report(0.05, 'Préparation des photos')
-  // Photos réduites à 2000 px (lisibles, mais légères à envoyer) ; PDF envoyés tels quels.
+  // Photos réduites à 1600 px en bonne qualité (lisibles, mais rapides à envoyer sur mobile) ; PDF envoyés tels quels.
   const payload = await Promise.all(
     files.map(async (f) => {
       if (isPdf(f)) return { mimeType: 'application/pdf', data: await toBase64(f) }
-      const url = await imagePreview(f, 2000).catch(() => undefined)
+      const url = await imagePreview(f, 1600, 0.85).catch(() => undefined)
       return url ? { mimeType: 'image/jpeg', data: url.split(',')[1] ?? '' } : { mimeType: f.type || 'image/jpeg', data: await toBase64(f) }
     }),
   )
-  report(0.25, 'Lecture de l\'écriture par l\'IA')
-  let tick = 0.25
-  const timer = setInterval(() => report((tick = Math.min(0.9, tick + 0.04)), 'Lecture de l\'écriture par l\'IA'), 700)
+  // Progression estimée (le service ne renvoie rien avant la fin) : elle ralentit sans jamais rester figée.
+  const t0 = Date.now()
+  const timer = setInterval(() => {
+    const s = (Date.now() - t0) / 1000
+    const status = s < 20 ? "Lecture de l'écriture par l'IA" : s < 45 ? 'La lecture prend un peu plus de temps que prévu…' : 'Dernier essai en cours…'
+    report(0.2 + 0.75 * (1 - Math.exp(-s / 15)), status)
+  }, 500)
   try {
-    const res = await fetch(IA_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: payload }) })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const body = (await res.json()) as { lines?: AiLine[] }
-    if (!Array.isArray(body.lines)) throw new Error('Réponse invalide')
+    let items: AiLine[]
+    try {
+      items = await callAi(payload)
+    } catch (e) {
+      // Une seule nouvelle tentative, et seulement pour une coupure réseau ou un service momentanément indisponible.
+      if (!(e instanceof AiError) || !e.retry) throw e
+      report(0.5, 'Nouvel essai de lecture')
+      items = await callAi(payload)
+    }
     report(1, 'Lecture terminée')
-    const lines = linesFromAi(body.lines)
-    const text = body.lines.map((l) => [l.texte, l.posologie, l.duree].filter(Boolean).join(' — ')).join('\n')
+    const lines = linesFromAi(items)
+    const text = items.map((l) => [l.texte, l.posologie, l.duree].filter(Boolean).join(' — ')).join('\n')
     return { engine: 'ia', text, lines, unsupported: [] }
   } finally {
     clearInterval(timer)
