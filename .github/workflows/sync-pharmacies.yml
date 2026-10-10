@@ -1,7 +1,8 @@
 name: Synchronisation des pharmacies
 
 # Récupère chaque jour les données publiques de https://www.pharmacies-de-garde.ci
-# (pharmacies de garde, annuaire, médicaments + prix, liste CMU, actualités) → public/data/*.json
+# (pharmacies de garde, annuaire, médicaments + prix, liste CMU, actualités) → public/data/*.json,
+# puis les complète avec des sources officielles ou libres (AIRP, OpenStreetMap, OMS, AIP, Ordre des pharmaciens).
 on:
   schedule:
     - cron: '17 6 * * *' # tous les jours à 06:17 (heure d'Abidjan = UTC)
@@ -34,6 +35,8 @@ jobs:
         run: npm run sync:test
       - name: Synchronisation
         run: node scripts/sync-pharmacies/sync.mjs ${{ inputs.garde_only && '--garde-only' || '' }}
+      - name: Sources officielles et libres (AIRP, OpenStreetMap, OMS, AIP, Ordre)
+        run: node scripts/sync-pharmacies/official.mjs
       - name: Publication des données
         run: |
           if [ -z "$(git status --porcelain -- public/data scripts/sync-pharmacies)" ]; then
@@ -43,7 +46,7 @@ jobs:
           git config user.name "pharma-ci-bot"
           git config user.email "pharma-ci-bot@users.noreply.github.com"
           git add public/data scripts/sync-pharmacies
-          git commit -m "Données : synchronisation pharmacies-de-garde.ci ($(date -u +%F))"
+          git commit -m "Données : synchronisation quotidienne ($(date -u +%F))"
           # main a pu avancer pendant la synchronisation (longue) : on se replace dessus avant de publier.
           for i in 1 2 3; do
             git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0

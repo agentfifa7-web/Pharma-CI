@@ -1,9 +1,10 @@
 import type { Pharmacy } from '../types'
-import type { HealthPlace, NewsArticle } from '../types'
+import type { DrugAlert, HealthPlace, NewsArticle } from '../types'
 import { PHARMACIES, PHARMACY_META, replacePharmacies } from '../data/pharmacies'
 import { replaceMedications } from '../data/medications'
 import { replaceHealthPlaces } from '../data/health'
 import { replaceNews } from '../data/news'
+import { replaceAlerts } from '../data/alerts'
 
 /**
  * Couche d'accès à l'annuaire des pharmacies.
@@ -54,13 +55,14 @@ async function getJson<T>(name: string, timeoutMs: number): Promise<T | undefine
   }
 }
 
-/** Charge toutes les données synchronisées (pharmacies, médicaments, établissements, actualités). */
+/** Charge toutes les données synchronisées (pharmacies, médicaments, établissements, actualités, alertes). */
 export async function loadAllData(timeoutMs = 15000) {
   await Promise.all([
     loadPharmacies(timeoutMs),
     getJson<Parameters<typeof replaceMedications>[0]>('medicaments.json', timeoutMs).then((d) => d && replaceMedications(d)),
     getJson<{ places: HealthPlace[] }>('etablissements.json', timeoutMs).then((d) => d && replaceHealthPlaces(d.places)),
     getJson<{ articles: (Omit<NewsArticle, 'url'> & { url: string })[] }>('actualites.json', timeoutMs).then((d) => d && replaceNews(d.articles)),
+    getJson<{ alerts: DrugAlert[] }>('alertes.json', timeoutMs).then((d) => d && replaceAlerts(d.alerts)),
   ])
 }
 

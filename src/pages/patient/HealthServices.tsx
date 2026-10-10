@@ -152,7 +152,7 @@ export default function HealthServices() {
                     </div>
                     {p.sourceUrl && (
                       <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
-                        <ExternalLink size={12} /> Voir la fiche source
+                        <ExternalLink size={12} /> {p.source ? `Source : ${p.source}` : 'Voir la fiche source'}
                       </a>
                     )}
                   </div>

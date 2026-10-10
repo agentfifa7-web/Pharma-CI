@@ -125,6 +125,14 @@ export default function MedicationDetail() {
                 {m.lab && <Row label="Laboratoire">{m.lab}</Row>}
                 <Row label="Classe thérapeutique">{m.therapeuticClass}</Row>
                 {m.regulatoryStatus && <Row label="Statut réglementaire">{m.regulatoryStatus}</Row>}
+                {(m.leafletUrl || m.rcpUrl) && (
+                  <Row label="Documents officiels (AIRP)">
+                    <span className="flex flex-wrap gap-3">
+                      {m.leafletUrl && <a href={m.leafletUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-600 underline">Notice</a>}
+                      {m.rcpUrl && <a href={m.rcpUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-600 underline">RCP</a>}
+                    </span>
+                  </Row>
+                )}
               </dl>
             </Card>
           </Section>

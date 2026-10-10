@@ -5,16 +5,19 @@ import type { Medication } from '../types'
  * scripts/sync-pharmacies à partir des listes publiques de pharmacies-de-garde.ci :
  *  - « Prix des médicaments en pharmacie en Côte d'Ivoire » (code, nom, groupe, prix) ;
  *  - « Liste des médicaments pris en charge par la CMU » (nom, prix, DCI, classe, présentation).
+ *  - liste des médicaments autorisés de l'AIRP (n° d'AMM, laboratoire, notice, RCP), ajoutée par
+ *    scripts/sync-pharmacies/official.mjs.
  * Aucune donnée n'est inventée : les champs absents des sources restent vides.
  */
 export const MEDICATIONS: Medication[] = []
 
-export const MEDICATION_META: { loaded: boolean; generatedAt?: string; prixUpdatedAt?: string; cmuUpdatedAt?: string; prixUrl?: string; cmuUrl?: string } = { loaded: false }
+export const MEDICATION_META: { loaded: boolean; generatedAt?: string; prixUpdatedAt?: string; cmuUpdatedAt?: string; prixUrl?: string; cmuUrl?: string; ammUpdatedAt?: string; ammUrl?: string } = { loaded: false }
 
-type Row = { i: string; c?: string; n: string; d?: string; g?: string; f?: string; t?: string; p?: number; s?: 'p' | 'c'; k?: 1; e?: string[]; v?: string[] }
+// a : n° d'AMM, l : laboratoire titulaire, x : fin de validité de l'AMM (xo : dépassée), o : notice, r : RCP, z : fiche AIRP seule
+type Row = { i: string; c?: string; n: string; d?: string; g?: string; f?: string; t?: string; p?: number; s?: 'p' | 'c'; k?: 1; e?: string[]; v?: string[]; a?: string; l?: string; x?: string; xo?: 1; o?: string; r?: string; z?: 1 }
 type Payload = {
   generatedAt: string
-  sources: { prix: { url: string; modified?: string }; cmu: { url: string; modified?: string } }
+  sources: { prix: { url: string; modified?: string }; cmu: { url: string; modified?: string }; amm?: { url: string; modified?: string } }
   medications: Row[]
 }
 
@@ -43,6 +46,11 @@ export function replaceMedications(data: Payload) {
         ? { amount: r.p, level: 'communique', updatedAt: cmuDate, source: 'Liste CMU — pharmacies-de-garde.ci', sourceUrl: data.sources.cmu.url }
         : { amount: r.p, level: 'communique', updatedAt: prixDate, source: 'Prix des médicaments en pharmacie — pharmacies-de-garde.ci', sourceUrl: data.sources.prix.url }
       : undefined,
+    lab: r.l,
+    regulatoryStatus: r.a ? ammStatus(r) : undefined,
+    leafletUrl: r.o,
+    rcpUrl: r.r,
+    fromAmm: r.z === 1,
     equivalents: r.e ?? [],
     cmuCandidates: r.v,
     lots: [],
@@ -50,7 +58,15 @@ export function replaceMedications(data: Payload) {
   MEDICATIONS.splice(0, MEDICATIONS.length, ...list)
   BY_ID.clear()
   for (const m of list) BY_ID.set(m.id, m)
-  Object.assign(MEDICATION_META, { loaded: true, generatedAt: data.generatedAt, prixUpdatedAt: prixDate, cmuUpdatedAt: cmuDate, prixUrl: data.sources.prix.url, cmuUrl: data.sources.cmu.url })
+  Object.assign(MEDICATION_META, { loaded: true, generatedAt: data.generatedAt, prixUpdatedAt: prixDate, cmuUpdatedAt: cmuDate, prixUrl: data.sources.prix.url, cmuUrl: data.sources.cmu.url, ammUpdatedAt: data.sources.amm?.modified?.slice(0, 10), ammUrl: data.sources.amm?.url })
+}
+
+const frDate = (iso: string) => iso.split('-').reverse().join('/')
+/** « AMM n° E-2022-1 (AIRP), valable jusqu'au 01/01/2027 » ; une date dépassée est signalée sans conclure. */
+function ammStatus(r: Row) {
+  const base = `AMM n° ${r.a} (AIRP)`
+  if (!r.x) return base
+  return r.xo ? `${base}, échéance du ${frDate(r.x)} dépassée : renouvellement à vérifier auprès de l'AIRP` : `${base}, valable jusqu'au ${frDate(r.x)}`
 }
 
 const BY_ID = new Map<string, Medication>()

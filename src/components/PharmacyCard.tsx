@@ -34,6 +34,7 @@ export default function PharmacyCard({ p, compact }: { p: PharmacyView; compact?
           </div>
           {!compact && (
             <div className="mt-2 flex flex-wrap gap-1.5">
+              {p.authorized && <Badge tone="green"><ShieldCheck size={12} />Autorisée AIRP</Badge>}
               {p.cmuVerified && <Badge tone="green"><ShieldCheck size={12} />CMU vérifiée</Badge>}
               {p.insurances.length > 0 && <Badge tone="blue">{p.insurances.length} assurance{p.insurances.length > 1 ? 's' : ''}</Badge>}
               {p.deliveryAvailable && <Badge tone="violet"><Truck size={12} />Livraison PHARMA CI</Badge>}

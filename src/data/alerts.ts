@@ -9,8 +9,13 @@ export const ALERT_KIND: Record<DrugAlert['kind'], { label: string; emoji: strin
 }
 
 /**
- * Alertes médicaments (rappels de lots, produits falsifiés…). Aucune source officielle n'est encore
- * branchée : la liste reste vide plutôt que d'afficher des alertes fictives. À alimenter depuis l'AIRP
- * (Autorité Ivoirienne de Régulation Pharmaceutique) ou le ministère de la Santé.
+ * Alertes médicaments — alimentées au démarrage par /data/alertes.json, produit par
+ * scripts/sync-pharmacies/official.mjs : avis de l'AIRP (Autorité Ivoirienne de Régulation Pharmaceutique :
+ * rappels de lots, mises en quarantaine, arrêts de commercialisation) et alertes produits médicaux de l'OMS.
+ * Aucune alerte n'est inventée : sans fichier, la liste reste vide.
  */
 export const DRUG_ALERTS: DrugAlert[] = []
+
+export function replaceAlerts(list: DrugAlert[]) {
+  DRUG_ALERTS.splice(0, DRUG_ALERTS.length, ...list)
+}

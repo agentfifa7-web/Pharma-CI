@@ -28,6 +28,10 @@ export type Pharmacy = {
   garde?: { start: string; end: string }
   /** Coordonnées déduites du centre de la commune (fiche sans GPS). */
   positionApprox?: boolean
+  /** Origine de la position quand elle provient d'une autre source que la fiche (ex. OpenStreetMap). */
+  positionSource?: string
+  /** Officine retrouvée sur la liste officielle des officines autorisées (AIRP). */
+  authorized?: { source: string; label: string }
   /** Horaires non publiés par la source : valeurs usuelles par défaut. */
   hoursApprox?: boolean
   sourceUrl?: string
@@ -58,7 +62,12 @@ export type Medication = {
   sideEffects?: string
   storage?: string
   leaflet?: string
+  /** Notice et résumé des caractéristiques du produit (RCP) publiés par l'AIRP. */
+  leafletUrl?: string
+  rcpUrl?: string
   regulatoryStatus?: string
+  /** Fiche issue uniquement de la liste des médicaments autorisés (AMM) de l'AIRP. */
+  fromAmm?: boolean
   prescriptionRequired?: boolean
   cmu: { status: CmuStatus; reference?: string; conditions?: string; source: string; sourceUrl?: string; updatedAt: string }
   price?: { amount: number; level: PriceLevel; updatedAt: string; source: string; sourceUrl?: string }
@@ -256,6 +265,8 @@ export type DrugAlert = {
   lots?: string[]
   date: string
   source: string
+  /** Avis officiel d'origine (document AIRP, page OMS…). */
+  url?: string
 }
 
 export type HealthPlace = {
@@ -273,5 +284,6 @@ export type HealthPlace = {
   services: string[]
   open24h: boolean
   hours?: WeeklyHours
+  source?: string
   sourceUrl?: string
 }
