@@ -10,6 +10,7 @@ import { ABIDJAN, distanceKm, lerp, travelMinutes } from '../lib/geo'
 import { otpCode, prescriptionIdFrom, randomCode, uid } from '../lib/crypto'
 import { rankAgents } from '../lib/assign'
 import { FRAUD_PRICE_GAP } from '../lib/pricing'
+import { createMission, updateMission, type SyncAuth } from '../lib/sync'
 
 export type Notification = { id: string; at: string; title: string; body: string; read: boolean; link?: string; tone?: 'info' | 'success' | 'warning' | 'danger' }
 export type AuditEntry = { id: string; at: string; actor: string; action: string; ref: string }
@@ -53,6 +54,10 @@ type State = {
   missions: Mission[]
   agents: Agent[]
   currentAgentId: string
+  /** Code d'accès des agents (missions partagées), saisi une fois sur le téléphone de l'agent. */
+  agentCode: string
+  /** Dernière erreur de synchronisation côté agent (ex. code refusé). */
+  agentSyncError?: string
   treatments: Treatment[]
   reports: VigilanceReport[]
   fraud: FraudEvent[]
@@ -80,7 +85,7 @@ type State = {
   logAccess: (actor: string, action: string, ref: string) => void
 
   // Missions
-  launchMission: (input: { prescriptionId: string; estimate: Mission['estimate']; address: string; position: LatLng; paymentMethod: string }) => Mission
+  launchMission: (input: { prescriptionId: string; estimate: Mission['estimate']; address: string; position: LatLng; paymentMethod: string; remote?: boolean; patientPhone?: string }) => Mission
   assignAgent: (missionId: string) => void
   agentArrive: (missionId: string, pharmacyId: string) => void
   submitInvoice: (missionId: string, invoice: Invoice) => void
@@ -92,9 +97,19 @@ type State = {
   cancelMission: (missionId: string, reason: string) => void
   rateMission: (missionId: string, rating: Rating) => void
 
+  // Missions partagées (patient ↔ agent)
+  syncMission: (missionId: string) => Promise<void>
+  applyRemoteMission: (m: Mission) => void
+  acceptMission: (missionId: string) => void
+  confirmDeliveryRemote: (missionId: string, code: string) => Promise<{ ok: boolean; error?: string }>
+  setAgentPosition: (missionId: string, position: LatLng) => void
+
   // Agent
   setCurrentAgent: (id: string) => void
   setAgentAvailability: (id: string, available: boolean) => void
+  setAgentCode: (code: string) => void
+  setAgentSyncError: (error?: string) => void
+  saveAgentProfile: (p: Pick<Agent, 'name' | 'phone' | 'zone' | 'vehicle'>) => void
 
   // Traitements
   addTreatment: (t: Omit<Treatment, 'id' | 'takenLog'>) => void
@@ -126,6 +141,8 @@ const initial = () => ({
   missions: [] as Mission[],
   agents: SEED_AGENTS,
   currentAgentId: SEED_AGENTS[0]!.id,
+  agentCode: '',
+  agentSyncError: undefined as string | undefined,
   treatments: [] as Treatment[],
   reports: [] as VigilanceReport[],
   fraud: [] as FraudEvent[],
@@ -139,8 +156,20 @@ const initial = () => ({
 export const useStore = create<State>()(
   persist(
     (set, get) => {
-      const patchMission = (id: string, fn: (m: Mission) => Partial<Mission>) =>
+      const replaceMission = (id: string, fn: (m: Mission) => Partial<Mission>) =>
         set((s) => ({ missions: s.missions.map((m) => (m.id === id ? { ...m, ...fn(m) } : m)) }))
+      // Toute modification d'une mission partagée est envoyée à la base (regroupée sur 400 ms).
+      const syncTimers = new Map<string, ReturnType<typeof setTimeout>>()
+      const scheduleSync = (id: string) => {
+        clearTimeout(syncTimers.get(id))
+        syncTimers.set(id, setTimeout(() => void get().syncMission(id), 400))
+      }
+      const patchMission = (id: string, fn: (m: Mission) => Partial<Mission>) => {
+        replaceMission(id, (m) => ({ ...fn(m), ...(m.remote ? { syncPending: true } : {}) }))
+        if (get().missions.find((m) => m.id === id)?.remote) scheduleSync(id)
+      }
+      const inflight = new Set<string>()
+      const authFor = (m: Mission): SyncAuth => (m.token ? { token: m.token } : { agentCode: get().agentCode })
       const patchPrescription = (id: string, fn: (p: Prescription) => Partial<Prescription>) =>
         set((s) => ({ prescriptions: s.prescriptions.map((p) => (p.id === id ? { ...p, ...fn(p) } : p)) }))
       const patchAgent = (id: string, fn: (a: Agent) => Partial<Agent>) =>
@@ -202,7 +231,7 @@ export const useStore = create<State>()(
         deletePrescription: (id) => set((s) => ({ prescriptions: s.prescriptions.filter((p) => p.id !== id || p.locked) })),
         logAccess: (actor, action, ref) => set((s) => ({ audit: [{ id: uid('au-'), at: now(), actor, action, ref }, ...s.audit].slice(0, 300) })),
 
-        launchMission: ({ prescriptionId, estimate, address, position, paymentMethod }) => {
+        launchMission: ({ prescriptionId, estimate, address, position, paymentMethod, remote, patientPhone }) => {
           const p = get().prescriptions.find((x) => x.id === prescriptionId)!
           const profile = get().profiles.find((x) => x.id === p.profileId)
           const mission: Mission = {
@@ -210,19 +239,27 @@ export const useStore = create<State>()(
             deliveryAddress: address, deliveryPosition: position, createdAt: now(), status: 'payee', estimate,
             partial: false, otp: otpCode(), paymentMethod,
             timeline: [{ at: now(), status: 'payee', label: `Paiement du service confirmé (${paymentMethod})` }],
+            ...(remote
+              ? {
+                  remote: true, syncPending: true, token: randomCode(24), patientPhone: patientPhone || get().user.phone,
+                  // Copie de l'ordonnance pour l'agent : 3 photos au plus, pour rester léger.
+                  prescription: { id: p.id, lines: p.lines, previews: p.previews.slice(0, 3), fileNames: p.fileNames.slice(0, 3) },
+                }
+              : {}),
           }
           set((s) => ({ missions: [mission, ...s.missions] }))
+          if (remote) void get().syncMission(mission.id)
           patchPrescription(prescriptionId, (x) => ({
             locked: true, missionId: mission.id, status: 'mission_lancee',
             history: [...x.history, { at: now(), event: `🔒 Ordonnance verrouillée — mission ${mission.id}` }],
           }))
-          get().notify({ title: 'Mission lancée 🚀', body: `Votre mission ${mission.id} est payée. Recherche de l'agent le plus proche…`, link: `/missions/${mission.id}`, tone: 'success' })
+          get().notify({ title: 'Mission lancée 🚀', body: `Votre mission ${mission.id} est payée. ${remote ? 'Elle est transmise aux agents PHARMA CI.' : 'Recherche de l\'agent le plus proche…'}`, link: `/missions/${mission.id}`, tone: 'success' })
           return mission
         },
 
         assignAgent: (missionId) => {
           const m = get().missions.find((x) => x.id === missionId)
-          if (!m || m.status !== 'payee') return
+          if (!m || m.status !== 'payee' || m.remote) return
           const best = rankAgents(get().agents, m.deliveryPosition)[0]
           if (!best) {
             patchMission(missionId, (x) => ({ timeline: step(x, 'info', 'Aucun agent disponible pour le moment — nouvelle tentative automatique') }))
@@ -316,7 +353,7 @@ export const useStore = create<State>()(
 
         tickDelivery: (missionId) => {
           const m = get().missions.find((x) => x.id === missionId)
-          if (!m || m.status !== 'en_route' || !m.agentPosition) return
+          if (!m || m.status !== 'en_route' || !m.agentPosition || m.remote) return
           const agent = get().agents.find((a) => a.id === m.agentId)
           const km = distanceKm(m.agentPosition, m.deliveryPosition)
           if (km < 0.05) return patchMission(missionId, () => ({ eta: 0 }))
@@ -353,8 +390,105 @@ export const useStore = create<State>()(
           }
         },
 
+        syncMission: async (id) => {
+          const m = get().missions.find((x) => x.id === id)
+          if (!m?.remote || !m.syncPending) return
+          if (inflight.has(id)) return scheduleSync(id)
+          inflight.add(id)
+          const res = m.rev ? await updateMission(m, authFor(m)) : await createMission(m)
+          inflight.delete(id)
+          if (res.ok) {
+            // Si la mission a encore changé pendant l'envoi, la nouvelle version part au tour suivant.
+            const changed = get().missions.find((x) => x.id === id) !== m
+            replaceMission(id, () => ({ rev: res.rev, syncPending: changed }))
+            if (changed) scheduleSync(id)
+            return
+          }
+          if (res.status === 0) return // pas de réseau : nouvel essai automatique
+          if (res.status === 409 && res.mission) {
+            replaceMission(id, () => ({ syncPending: false }))
+            get().applyRemoteMission(res.mission)
+            get().notify({ title: 'Mission mise à jour entre-temps', body: `La mission ${id} a été modifiée par ailleurs. Vérifiez son état puis recommencez si besoin.`, link: m.token ? `/missions/${id}` : `/agent/missions/${id}`, tone: 'warning' })
+            return
+          }
+          replaceMission(id, () => ({ syncPending: false }))
+          get().notify({ title: 'Mission non transmise', body: `${res.error}. La mission ${id} n'a pas pu être enregistrée sur le service.`, link: m.token ? `/missions/${id}` : `/agent/missions/${id}`, tone: 'danger' })
+        },
+
+        applyRemoteMission: (remote) => {
+          const local = get().missions.find((x) => x.id === remote.id)
+          if (local && (remote.rev ?? 0) <= (local.rev ?? 0)) return
+          const merged: Mission = { ...remote, remote: true, syncPending: false, token: local?.token, otp: remote.otp ?? local?.otp ?? '' }
+          set((s) => ({ missions: local ? s.missions.map((x) => (x.id === remote.id ? merged : x)) : [merged, ...s.missions] }))
+          if (merged.token) {
+            // Côté patient : l'ordonnance et les notifications suivent l'avancement donné par l'agent.
+            if (local && local.status !== merged.status) {
+              const pres: Partial<Record<MissionStatus, PrescriptionStatus>> = {
+                agent_affecte: 'en_cours', en_pharmacie: 'en_cours',
+                achat_effectue: merged.partial ? 'partiellement_executee' : 'achat_effectue',
+                livree: merged.partial ? 'partiellement_executee' : 'livree',
+              }
+              const next = pres[merged.status]
+              if (next) setPrescriptionStatus(merged.prescriptionId, next, MISSION_LABEL[merged.status])
+              if (merged.status === 'annulee')
+                patchPrescription(merged.prescriptionId, (p) => ({ status: 'annulee', locked: false, history: [...p.history, { at: now(), event: `Mission ${merged.id} annulée — ordonnance déverrouillée` }] }))
+              get().notify({
+                title: MISSION_LABEL[merged.status],
+                body: merged.timeline.at(-1)?.label ?? '',
+                link: `/missions/${merged.id}`,
+                tone: merged.status === 'ecart_prix' ? 'warning' : merged.status === 'annulee' ? 'danger' : 'info',
+              })
+            }
+          } else if (!local && merged.status === 'payee') {
+            get().notify({ title: 'Nouvelle mission disponible 🛵', body: `${merged.id} · ${merged.deliveryAddress}`, link: `/agent/missions/${merged.id}`, tone: 'info' })
+          }
+        },
+
+        acceptMission: (missionId) => {
+          const m = get().missions.find((x) => x.id === missionId)
+          const agent = get().agents.find((a) => a.id === get().currentAgentId)
+          if (!m || m.status !== 'payee' || !agent) return
+          patchAgent(agent.id, (a) => ({ activeMissions: a.activeMissions + 1 }))
+          patchMission(missionId, (x) => ({
+            status: 'agent_affecte', agentId: agent.id, agentName: agent.name, agentPhone: agent.phone, agentPosition: agent.position,
+            eta: travelMinutes(distanceKm(agent.position, x.deliveryPosition), agent.vehicle) + 25,
+            timeline: step(x, 'agent_affecte', `${agent.name} a accepté la mission`),
+          }))
+        },
+
+        confirmDeliveryRemote: async (missionId, code) => {
+          await get().syncMission(missionId)
+          const m = get().missions.find((x) => x.id === missionId)
+          if (!m || m.status !== 'en_route') return { ok: false, error: 'Mission introuvable ou pas en cours de livraison' }
+          const next: Mission = { ...m, status: 'livree', eta: 0, agentPosition: m.deliveryPosition, timeline: step(m, 'livree', 'Code OTP validé — médicaments, facture originale et justificatif remis ✅') }
+          const res = await updateMission(next, authFor(m), code.trim())
+          if (!res.ok) {
+            if (res.status === 409 && res.mission) get().applyRemoteMission(res.mission)
+            return { ok: false, error: res.status === 403 ? 'Code incorrect. Demandez au patient le code affiché dans son application.' : res.status === 0 ? 'Pas de connexion. Réessayez dans un instant.' : res.error }
+          }
+          replaceMission(missionId, () => ({ ...next, rev: res.rev, syncPending: false }))
+          if (m.agentId) patchAgent(m.agentId, (a) => ({ activeMissions: Math.max(0, a.activeMissions - 1), completed: a.completed + 1, earnings: a.earnings + Math.round(m.estimate.delivery * 0.8 + m.estimate.service * 0.3) }))
+          return { ok: true }
+        },
+
+        setAgentPosition: (missionId, position) => {
+          const m = get().missions.find((x) => x.id === missionId)
+          const agent = get().agents.find((a) => a.id === m?.agentId)
+          if (!m) return
+          patchMission(missionId, (x) => ({ agentPosition: position, eta: travelMinutes(distanceKm(position, x.deliveryPosition), agent?.vehicle) }))
+        },
+
         setCurrentAgent: (currentAgentId) => set({ currentAgentId }),
         setAgentAvailability: (id, available) => patchAgent(id, () => ({ available })),
+        setAgentCode: (agentCode) => set({ agentCode: agentCode.trim(), agentSyncError: undefined }),
+        setAgentSyncError: (agentSyncError) => set({ agentSyncError }),
+        saveAgentProfile: (p) => {
+          const current = get().agents.find((a) => a.id === get().currentAgentId)
+          // Un vrai agent reçoit son propre identifiant (les comptes de test « ag-0x » restent partagés).
+          if (current && !SEED_AGENTS.some((s) => s.id === current.id)) return patchAgent(current.id, () => p)
+          const agent: Agent = { id: uid('ag-'), photo: '', position: current?.position ?? ABIDJAN, available: true, activeMissions: 0, rating: 0, completed: 0, earnings: 0, ...p }
+          set((s) => ({ agents: [...s.agents, agent], currentAgentId: agent.id }))
+        },
 
         addTreatment: (t) => set((s) => ({ treatments: [...s.treatments, { ...t, id: uid('tr-'), takenLog: [] }] })),
         removeTreatment: (id) => set((s) => ({ treatments: s.treatments.filter((t) => t.id !== id) })),

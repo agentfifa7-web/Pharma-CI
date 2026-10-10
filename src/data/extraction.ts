@@ -24,8 +24,8 @@ import { imagePreview } from '../lib/crypto'
 
 /** Adresse du service de lecture par IA (Cloudflare Worker). Vide = lecture par IA désactivée. */
 export const ORDONNANCE_IA_URL = 'https://ordonnance-ia.agentfifa7.workers.dev'
-const IA_URL = ((import.meta.env?.VITE_ORDONNANCE_IA_URL as string | undefined) || ORDONNANCE_IA_URL).trim()
-export const aiReadingEnabled = () => !!IA_URL
+export const SERVICE_URL = ((import.meta.env?.VITE_ORDONNANCE_IA_URL as string | undefined) || ORDONNANCE_IA_URL).trim()
+export const aiReadingEnabled = () => !!SERVICE_URL
 
 export type OcrResult = {
   /** Moteur utilisé : « ia » (modèle de vision) ou « ocr » (tesseract.js). */
@@ -53,7 +53,7 @@ const STATUS_FR: Record<string, string> = {
 const isPdf = (f: File) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
 
 export async function readPrescription(files: File[], onProgress?: (p: number, status: string) => void): Promise<OcrResult> {
-  if (!IA_URL) return readWithOcr(files, onProgress)
+  if (!SERVICE_URL) return readWithOcr(files, onProgress)
   try {
     return await readWithAi(files, onProgress)
   } catch (e) {
@@ -89,7 +89,7 @@ async function callAi(payload: { mimeType: string; data: string }[]): Promise<Ai
   const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS)
   let res: Response
   try {
-    res = await fetch(IA_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: payload }), signal: ctrl.signal })
+    res = await fetch(SERVICE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: payload }), signal: ctrl.signal })
   } catch {
     throw ctrl.signal.aborted
       ? new AiError('La lecture a pris trop de temps. Vérifiez votre connexion puis relancez la lecture.', false)
@@ -271,6 +271,7 @@ const FORMS: [string, RegExp][] = [
   ['inj', /\b(INJ|INJECTABLE|AMP|AMPOULES?|IV|IM|PERF)\b/],
   ['top', /\b(CREME|CR|POMMADE|POM|GEL DERM|LOTION|COLLYRE|GTTES?|GOUTTES)\b/],
   ['sup', /\b(SUPPO|SUPP|SUPPOSITOIRES?)\b/],
+  ['inh', /\b(AEROSOL|SPRAY|INHAL|INHALATEUR|INHALATION|INH)\b/],
 ]
 const formsOf = (text: string) => new Set(FORMS.filter(([, re]) => re.test(text)).map(([k]) => k))
 
@@ -285,9 +286,16 @@ function bestMatch(candidates: Medication[], tokens: string[], dose?: string) {
     if (dose && (doseKey(m.dosage) === dose || doseKey(m.brand) === dose)) score += 5
     if (lineForms.size) {
       const mf = formsOf(`${norm(m.brand)} ${norm(m.form ?? '')}`)
-      for (const f of lineForms) if (mf.has(f)) score += 2
+      let same = false
+      for (const f of lineForms) {
+        if (!mf.has(f)) continue
+        score += 2
+        same = true
+      }
+      if (!same && mf.size) score -= 2 // forme différente (ex. injectable pour des comprimés)
     }
-    if (m.price) score += 0.5
+    // À lecture égale, préférer un produit dont le prix public est connu (le montant s'affiche alors).
+    if (m.price) score += 1.5
     if (score > bestScore) {
       bestScore = score
       best = m

@@ -40,7 +40,25 @@ Après la publication, la page « Envoyer une ordonnance » lit les ordonnances 
 ## Mettre à jour le service
 Quand `worker.js` change dans ce dépôt, il faut recoller le code chez Cloudflare (la clé, elle, est conservée) :
 **Workers & Pages** → `ordonnance-ia` → **Edit code** → tout effacer → coller le nouveau `worker.js` → **Deploy**.
-L'adresse du service affiche alors le numéro de version (`"version":5`).
+L'adresse du service affiche alors le numéro de version (`"version":6`).
+
+## Missions partagées entre patients et agents (base de données)
+Sans cette base, une mission n'existe que sur le téléphone du patient : l'agent ne la reçoit pas sur son propre
+téléphone. Le même service Cloudflare enregistre les missions dans une base gratuite (Cloudflare D1).
+
+Mise en place (une seule fois) :
+1. Cloudflare → **Storage & Databases** → **D1 SQL Database** → **Create** → nom `pharma-ci` → **Create**.
+2. **Workers & Pages** → `ordonnance-ia` → **Settings** → **Bindings** → **Add** → **D1 database** :
+   Variable name `DB`, base `pharma-ci` → **Add Binding** (ou **Deploy**).
+3. **Settings** → **Variables and Secrets** → **Add** : Type **Secret**, Name `AGENT_CODE`, Value : un code choisi
+   (au moins 8 caractères), à remettre aux agents → **Deploy**.
+4. Recoller la dernière version de `worker.js` (voir « Mettre à jour le service »).
+5. L'adresse du service doit afficher `"missions":true` et `"agentCode":true`. La table est créée automatiquement.
+
+Ensuite, chaque agent ouvre `https://www.pharma-ci.org/agent` sur son téléphone, saisit le code agent, puis son nom
+et son téléphone. Les missions des patients y apparaissent (actualisation toutes les 8 secondes) ; l'agent en accepte
+une, peut appeler le patient (appel, WhatsApp, SMS), et chaque étape remonte chez le patient. Le code de livraison
+du patient n'est jamais transmis aux agents : le service le vérifie lui-même.
 
 ## Diagnostic
 Ouvrir `https://ordonnance-ia.agentfifa7.workers.dev/?diagnostic` : pour chaque modèle Gemini utilisé, la page fait une

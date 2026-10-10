@@ -5,7 +5,7 @@ import type { Mission } from '../../types'
 import { MISSION_LABEL, useStore } from '../../store/useStore'
 import { Badge, ButtonLink, Card, EmptyState, PageHeader, Section, cx } from '../../components/ui'
 import { dateTimeFr, fcfa, initials } from '../../lib/format'
-import { MISSION_TONE, isMissionActive, missionProgress } from '../../data/statusUi'
+import { MISSION_TONE, isMissionActive, missionProgress, missionAgent } from '../../data/statusUi'
 
 export default function Missions() {
   const missions = useStore((s) => s.missions)
@@ -14,7 +14,7 @@ export default function Missions() {
   const past = useMemo(() => missions.filter((m) => !isMissionActive(m)), [missions])
 
   const row = (m: Mission) => {
-    const agent = agents.find((a) => a.id === m.agentId)
+    const agent = missionAgent(m, agents)
     const live = isMissionActive(m)
     return (
       <Link key={m.id} to={`/missions/${m.id}`} className="block">

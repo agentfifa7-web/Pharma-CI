@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, RefreshCw, Truck, XCircle } from 'lucide-react'
 import { MISSION_LABEL, useStore } from '../../store/useStore'
-import { MISSION_TONE } from '../../data/statusUi'
+import { MISSION_TONE, missionAgent } from '../../data/statusUi'
 import { FRAUD_PRICE_GAP } from '../../lib/pricing'
 import { dateTimeFr, fcfa } from '../../lib/format'
 import { Badge, Button, Chips, Notice, PageHeader, Stat, cx } from '../../components/ui'
@@ -80,7 +80,7 @@ export default function AdminMissions() {
                   </Td>
                   <Td className="font-mono text-xs font-semibold">{m.id}</Td>
                   <Td>{m.patientName}</Td>
-                  <Td>{agents.find((a) => a.id === m.agentId)?.name ?? <span className="text-slate-400">—</span>}</Td>
+                  <Td>{missionAgent(m, agents)?.name ?? <span className="text-slate-400">—</span>}</Td>
                   <Td><Badge tone={MISSION_TONE[m.status]}>{MISSION_LABEL[m.status].split(' —')[0]}</Badge></Td>
                   <Td className="tabular-nums">{fcfa(m.estimate.total)}</Td>
                   <Td className="tabular-nums">{m.invoice ? fcfa(m.invoice.amount) : <span className="text-slate-400">—</span>}</Td>
