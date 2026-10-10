@@ -72,6 +72,11 @@ export default function Alerts() {
                           💊 {med.brand}<ChevronRight size={14} />
                         </Link>
                       )}
+                      {a.url && (
+                        <a href={a.url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-600 hover:underline">
+                          Lire l'avis officiel<ChevronRight size={14} />
+                        </a>
+                      )}
                       <p className="mt-2 text-[11px] text-slate-400">Source : {a.source}</p>
                     </div>
                   </div>
@@ -84,7 +89,7 @@ export default function Alerts() {
       )}
 
       <Notice tone="orange" className="mt-6">
-        Les alertes proviennent exclusivement des sources officielles (AIRP — Autorité Ivoirienne de Régulation Pharmaceutique, ministère de la Santé). Ne jetez pas un médicament et n'interrompez pas un traitement sans avis : rapprochez-vous de votre pharmacien.
+        Les alertes proviennent exclusivement des sources officielles : AIRP (Autorité Ivoirienne de Régulation Pharmaceutique) et OMS (Organisation mondiale de la santé). Ne jetez pas un médicament et n'interrompez pas un traitement sans avis : rapprochez-vous de votre pharmacien.
       </Notice>
       <div className="mt-3 text-center">
         <Link to="/vigilance" className="text-sm font-semibold text-brand-600 hover:underline">Signaler un problème de qualité →</Link>
