@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Star } from 'lucide-react'
 import type { CmuStatus, OpenState, PriceLevel } from '../types'
 import { PHARMACY_META } from '../data/pharmacyMeta'
+import { PHARMACIES } from '../data/pharmacies'
+import { isOnGarde } from '../lib/hours'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -234,12 +236,29 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   )
 }
 
+/** Bandeau du haut : pharmacies de garde du moment, qui défilent de droite à gauche. */
 export function DemoBanner() {
+  const now = new Date()
+  const current = PHARMACIES.filter((p) => isOnGarde(p, now))
+  // Hors période publiée (nouvelle liste pas encore synchronisée) : dernière liste connue, signalée comme telle.
+  const list = current.length ? current : PHARMACIES.filter((p) => p.garde)
+  const until = PHARMACY_META.garde && new Date(PHARMACY_META.garde.end).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  if (!PHARMACY_META.live || !list.length) {
+    return (
+      <div className="bg-ink px-4 py-1.5 text-center text-[11px] font-medium text-white/80">
+        {PHARMACY_META.live ? 'Pharmacies de garde : liste en cours de mise à jour.' : 'Données non chargées : lancez la synchronisation (npm run sync:pharmacies).'}
+      </div>
+    )
+  }
+  const title = current.length ? `🚨 Pharmacies de garde${until ? ` jusqu'au ${until}` : ''}` : '🚨 Dernière liste de garde publiée'
+  const items = list.map((p) => `${p.name} (${p.commune === p.city ? p.city : `${p.commune}, ${p.city}`})${p.phone ? ` · ${p.phone}` : ''}`)
+  const text = `${title} : ${items.join('   •   ')}   •   `
   return (
-    <div className="bg-ink px-4 py-1.5 text-center text-[11px] font-medium text-white/80">
-      {PHARMACY_META.live
-        ? 'Données issues de sources publiques (pharmacies, gardes, médicaments, prix, CMU) — à confirmer auprès de la pharmacie.'
-        : 'Données non chargées : lancez la synchronisation (npm run sync:pharmacies).'}
-    </div>
+    <Link to="/garde" className="block overflow-hidden bg-ink py-1.5 text-[11px] font-medium text-white/85 hover:text-white" aria-label="Voir les pharmacies de garde">
+      <div className="garde-ticker flex w-max whitespace-nowrap" style={{ animationDuration: `${Math.max(40, list.length * 4)}s` }}>
+        <span className="pr-4">{text}</span>
+        <span className="pr-4" aria-hidden="true">{text}</span>
+      </div>
+    </Link>
   )
 }
