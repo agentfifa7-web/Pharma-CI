@@ -61,6 +61,7 @@ L'application contient trois interfaces (sélecteur en haut à droite) :
 | 30 | Alertes médicaments | `/alertes` |
 | 31 | SCAN PHARMA | `/scan` |
 | 32 | PHARMA AI | `/assistant` |
+| — | Parler à un pharmacien (pharmacien partenaire de garde en premier ; WhatsApp écrit ou vocal, appel, SMS ; historique des échanges) | `/pharmacien` |
 | 33 | PHARMA NEWS CI | `/actualites` |
 | 34 | PHARMA LEGAL | `/reglementation` |
 | 35 | Ordre des pharmaciens | `/ordre` |

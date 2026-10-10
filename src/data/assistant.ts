@@ -278,28 +278,28 @@ export function answer(question: string): AiAnswer {
     return {
       tone: 'warning',
       text: '❌ Je ne peux pas vous conseiller de modifier une dose ou d\'arrêter un traitement.\n\nToute modification de posologie doit être décidée par votre médecin, ou discutée avec votre pharmacien. Ne changez rien de vous-même, même si vous vous sentez mieux ou moins bien.',
-      links: [{ label: 'Trouver une pharmacie', to: '/pharmacies' }],
+      links: [{ label: 'Parler à un pharmacien', to: '/pharmacien' }, { label: 'Trouver une pharmacie', to: '/pharmacies' }],
     }
   }
   if (has(q, REPLACE)) {
     return {
       tone: 'warning',
       text: '❌ Je ne peux pas remplacer un médicament prescrit.\n\nSeul votre prescripteur, ou votre pharmacien dans le cadre prévu par la réglementation, peut proposer un autre produit. Présentez votre ordonnance en pharmacie pour en discuter.',
-      links: [{ label: 'Trouver une pharmacie', to: '/pharmacies' }],
+      links: [{ label: 'Parler à un pharmacien', to: '/pharmacien' }, { label: 'Trouver une pharmacie', to: '/pharmacies' }],
     }
   }
   if (has(q, PRESCRIBE)) {
     return {
       tone: 'warning',
       text: '❌ Je ne peux pas vous prescrire de médicament ni vous indiquer une dose.\n\nVotre pharmacien peut vous conseiller pour les petits maux, et votre médecin pourra établir une prescription adaptée. En cas de signe grave, appelez le 185.',
-      links: [{ label: 'Pharmacies proches', to: '/pharmacies' }, { label: 'Autres services de santé', to: '/sante' }],
+      links: [{ label: 'Parler à un pharmacien', to: '/pharmacien' }, { label: 'Pharmacies proches', to: '/pharmacies' }, { label: 'Autres services de santé', to: '/sante' }],
     }
   }
   if (has(q, DIAGNOSIS)) {
     return {
       tone: 'warning',
       text: '❌ Je ne peux pas poser de diagnostic ni interpréter vos symptômes.\n\nConsultez un médecin ou demandez conseil à un pharmacien. Si les symptômes sont intenses, s\'aggravent ou concernent un nourrisson, une femme enceinte ou une personne âgée, consultez sans attendre. En cas d\'urgence : 185 (SAMU).',
-      links: [{ label: 'Services de santé', to: '/sante' }, { label: 'Urgences', to: '/urgences' }],
+      links: [{ label: 'Parler à un pharmacien', to: '/pharmacien' }, { label: 'Services de santé', to: '/sante' }, { label: 'Urgences', to: '/urgences' }],
     }
   }
 
