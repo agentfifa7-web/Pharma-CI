@@ -8,7 +8,7 @@ import { PRESCRIPTION_LABEL, useActiveProfile, useStore } from '../../store/useS
 import { Badge, Button, ButtonLink, Card, Input, Notice, PageHeader, cx } from '../../components/ui'
 import { fingerprintFiles, imagePreview, uid } from '../../lib/crypto'
 import { dateTimeFr } from '../../lib/format'
-import { readPrescription } from '../../data/extraction'
+import { aiReadingEnabled, readPrescription } from '../../data/extraction'
 import { MEDICATIONS, medById, medShortName } from '../../data/medications'
 import { fcfa } from '../../lib/format'
 import { PRESCRIPTION_TONE, RELATION_LABEL } from '../../data/statusUi'
@@ -34,6 +34,7 @@ export default function PrescriptionUpload() {
   const [progress, setProgress] = useState({ p: 0, status: '' })
   const [ocrText, setOcrText] = useState('')
   const [ocrNote, setOcrNote] = useState('')
+  const [engine, setEngine] = useState<'ia' | 'ocr'>('ocr')
 
   /** Autocomplétion : nom commercial → produit de la base PHARMA MED. */
   const byBrand = useMemo(() => {
@@ -93,16 +94,17 @@ export default function PrescriptionUpload() {
     // Lecture automatique (OCR) — en cas d'échec, saisie manuelle.
     let extracted: PrescriptionLine[] = []
     let note = ''
-    setProgress({ p: 0, status: 'Chargement du moteur de lecture' })
+    setProgress({ p: 0, status: aiReadingEnabled() ? 'Préparation des photos' : 'Chargement du moteur de lecture' })
     setPhase('ocr')
     try {
       const res = await readPrescription(raw, (p, status) => setProgress({ p, status }))
       extracted = res.lines
+      setEngine(res.engine)
       setOcrText(res.text.trim())
       if (res.unsupported.length && res.unsupported.length === raw.length)
         note = 'La lecture automatique des PDF n\'est pas encore prise en charge : saisissez les lignes de l\'ordonnance ci-dessous (ou envoyez une photo).'
       else if (!extracted.length)
-        note = 'Aucune ligne de médicament n\'a pu être lue automatiquement. Saisissez les lignes telles qu\'écrites sur l\'ordonnance.'
+        note = 'Aucune ligne de médicament n\'a pu être lue automatiquement. Reprenez une photo nette, de face et bien éclairée, ou saisissez les lignes telles qu\'écrites sur l\'ordonnance.'
       else if (res.unsupported.length)
         note = `${res.unsupported.length} PDF non lu(s) automatiquement : ajoutez leurs lignes manuellement.`
     } catch {
@@ -279,7 +281,11 @@ export default function PrescriptionUpload() {
           <div className="mx-auto mt-4 h-2 w-56 overflow-hidden rounded-full bg-slate-200">
             <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${Math.round(progress.p * 100)}%` }} />
           </div>
-          <p className="mx-auto mt-4 max-w-sm text-xs text-slate-400">La première lecture télécharge le moteur OCR et les données de langue française (quelques Mo).</p>
+          <p className="mx-auto mt-4 max-w-sm text-xs text-slate-400">
+            {aiReadingEnabled()
+              ? "L'écriture de l'ordonnance (même manuscrite) est lue par une IA. Une photo nette, bien éclairée et prise de face donne le meilleur résultat."
+              : 'La première lecture télécharge le moteur OCR et les données de langue française (quelques Mo).'}
+          </p>
         </Card>
       )}
 
@@ -292,7 +298,7 @@ export default function PrescriptionUpload() {
           </Card>
 
           <Notice tone="orange" icon={<Sparkles size={16} />} className="mb-4">
-            <b>Lecture automatique (OCR) — vérifiez chaque ligne</b> ; l'IA ne modifie pas la prescription.
+            <b>{engine === 'ia' ? 'Lecture automatique par IA' : 'Lecture automatique (OCR)'} : vérifiez chaque ligne</b> ; l'IA ne modifie pas la prescription.
           </Notice>
           {ocrNote && <Notice tone="blue" icon={<AlertTriangle size={16} />} className="mb-4">{ocrNote}</Notice>}
         </>
@@ -310,14 +316,14 @@ export default function PrescriptionUpload() {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold leading-snug">{l.label}</p>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Quantité : {l.quantity} · {med ? <>Correspondance proposée : <b>{medShortName(med)}</b></> : 'Médicament non identifié dans la base'}
+                      {l.instructions && <>{l.instructions} · </>}Quantité : {l.quantity} · {med ? <>Correspondance proposée : <b>{medShortName(med)}</b></> : 'Médicament non identifié dans la base'}
                     </p>
                   </div>
                 </li>
               )
             })}
           </ul>
-          <OcrText text={ocrText} />
+          <OcrText text={ocrText} engine={engine} />
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <Button size="lg" onClick={() => setPhase('review')}><Check size={18} /> Vérifier et confirmer</Button>
             <Button size="lg" variant="outline" onClick={() => setPhase('review')}>Corriger une erreur de lecture</Button>
@@ -369,7 +375,7 @@ export default function PrescriptionUpload() {
           <Notice tone="blue" className="mt-4">
             Le médicament correspondant sert uniquement à estimer le prix. Seuls les médicaments écrits sur l'ordonnance seront achetés. Aucun remplacement n'est effectué sans l'avis du prescripteur ou du pharmacien.
           </Notice>
-          <OcrText text={ocrText} />
+          <OcrText text={ocrText} engine={engine} />
           <Button size="lg" className="mt-4 w-full" onClick={confirm} disabled={!lines.some((l) => l.label.trim())}>
             <Check size={18} /> Confirmer
           </Button>
@@ -397,11 +403,11 @@ function SourceButton({ icon, title, text, onClick, highlight }: { icon: React.R
   )
 }
 
-function OcrText({ text }: { text: string }) {
+function OcrText({ text, engine }: { text: string; engine: 'ia' | 'ocr' }) {
   if (!text) return null
   return (
     <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-      <summary className="cursor-pointer font-semibold text-slate-600">Texte lu sur le document (OCR brut)</summary>
+      <summary className="cursor-pointer font-semibold text-slate-600">{engine === 'ia' ? 'Texte lu sur le document (IA)' : 'Texte lu sur le document (OCR brut)'}</summary>
       <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap font-mono text-xs text-slate-600">{text}</pre>
     </details>
   )
