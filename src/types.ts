@@ -26,6 +26,8 @@ export type Pharmacy = {
   source: string
   /** Période de garde publiée par la source (prioritaire sur la rotation `gardeGroup`). */
   garde?: { start: string; end: string }
+  /** Toutes les semaines de garde du tour officiel du mois (la semaine en cours est aussi dans `garde`). */
+  gardes?: { start: string; end: string }[]
   /** Coordonnées déduites du centre de la commune (fiche sans GPS). */
   positionApprox?: boolean
   /** Origine de la position quand elle provient d'une autre source que la fiche (ex. OpenStreetMap). */

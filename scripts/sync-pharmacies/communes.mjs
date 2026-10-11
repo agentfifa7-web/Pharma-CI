@@ -32,7 +32,7 @@ const ABIDJAN_ZONES = [
 /** Villes de l'intérieur (coordonnées approximatives du centre-ville). */
 export const CITIES = {
   'Abengourou': [6.73, -3.496], 'Aboisso': [5.468, -3.207], 'Adiaké': [5.286, -3.304], 'Adzopé': [6.107, -3.86],
-  'Agboville': [5.928, -4.213], 'Agnibilékrou': [7.13, -3.204], 'Akoupé': [6.384, -3.888], 'Azaguié': [5.63, -4.08],
+  'Agboville': [5.928, -4.213], 'Agnibilékrou': [7.13, -3.204], 'Akoupé': [6.384, -3.888], 'Azaguié': [5.63, -4.08], 'Oumé': [6.383, -5.418],
   'Bayota': [5.98, -5.82], 'Bondoukou': [8.04, -2.8], 'Bonoua': [5.272, -3.596], 'Bouaflé': [6.99, -5.744],
   'Bouaké': [7.69, -5.03], 'Dabou': [5.325, -4.377], 'Daloa': [6.877, -6.45], 'Danané': [7.26, -8.155],
   'Diégonéfla': [6.13, -5.53], 'Dimbokro': [6.65, -4.705], 'Divo': [5.837, -5.357], 'Duékoué': [6.742, -7.349],

@@ -135,6 +135,16 @@ npm run sync:pharmacies -- --fixtures   # hors ligne, à partir de scripts/sync-
 - **Rapprochement** : les pharmacies de garde sont associées aux fiches de l'annuaire (nom + ville) pour obtenir
   leurs coordonnées GPS. Sans correspondance, la position est celle du centre de la commune et l'application
   l'indique (« Position approximative ») ; l'itinéraire recherche alors la pharmacie par son nom.
+- **Tour de garde officiel du mois** : le programme mensuel (PDF d'Abidjan et des villes de l'intérieur) est
+  importé une fois dans `scripts/sync-pharmacies/garde/AAAA-MM.json`, puis fusionné chaque jour par
+  `npm run sync:garde` (étape du workflow après `official.mjs`). Chaque pharmacie reçoit ses semaines de garde
+  (`gardes`), le site bascule seul sur la bonne semaine chaque samedi à 8 h, et la page « De garde » permet de
+  consulter les semaines suivantes. Sur la période couverte, ce document fait foi. Pour un nouveau mois :
+
+  ```bash
+  pdftotext -layout garde-abidjan.pdf abj.txt && pdftotext -layout garde-interieur.pdf int.txt
+  node scripts/sync-pharmacies/roster.mjs --import 2026-11 abj.txt int.txt && npm run sync:garde
+  ```
 - **Données personnelles** : le nom des pharmaciens titulaires publié dans les tableaux n'est pas conservé.
 - **Respect de la source** : requêtes espacées, User-Agent identifié, cache des fiches. Vérifiez les conditions
   d'utilisation du site et, idéalement, concluez un accord avec son éditeur (partenariat@pharmacies-de-garde.ci

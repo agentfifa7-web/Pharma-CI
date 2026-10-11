@@ -4,7 +4,7 @@ import { ArrowLeft, Star } from 'lucide-react'
 import type { CmuStatus, OpenState, PriceLevel } from '../types'
 import { PHARMACY_META } from '../data/pharmacyMeta'
 import { PHARMACIES } from '../data/pharmacies'
-import { isOnGarde } from '../lib/hours'
+import { gardePeriod, isOnGarde } from '../lib/hours'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -242,7 +242,7 @@ export function DemoBanner() {
   const current = PHARMACIES.filter((p) => isOnGarde(p, now))
   // Hors période publiée (nouvelle liste pas encore synchronisée) : dernière liste connue, signalée comme telle.
   const list = current.length ? current : PHARMACIES.filter((p) => p.garde)
-  const until = PHARMACY_META.garde && new Date(PHARMACY_META.garde.end).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const until = (PHARMACY_META.gardes?.length || PHARMACY_META.garde) && gardePeriod(now).end.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
   if (!PHARMACY_META.live || !list.length) {
     return (
       <div className="bg-ink px-4 py-1.5 text-center text-[11px] font-medium text-white/80">
