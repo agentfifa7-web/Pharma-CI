@@ -17,7 +17,7 @@ import { replaceAlerts } from '../data/alerts'
  */
 const API = import.meta.env.VITE_PHARMACY_API_URL as string | undefined
 
-type Payload = { pharmacies: Pharmacy[]; sourceLabel?: string; generatedAt?: string; garde?: { start: string; end: string; label: string } }
+type Payload = { pharmacies: Pharmacy[]; sourceLabel?: string; generatedAt?: string; garde?: { start: string; end: string; label: string }; gardes?: { start: string; end: string; label: string }[] }
 
 export async function loadPharmacies(timeoutMs = 5000) {
   const url = API ? `${API.replace(/\/$/, '')}/pharmacies` : `${import.meta.env.BASE_URL}data/pharmacies.json`
@@ -30,7 +30,7 @@ export async function loadPharmacies(timeoutMs = 5000) {
     const list = Array.isArray(data) ? data : data.pharmacies
     if (!list?.length) throw new Error('liste vide')
     const meta: Partial<Payload> = Array.isArray(data) ? {} : data
-    replacePharmacies(list, { label: meta.sourceLabel ?? 'Annuaire synchronisé', generatedAt: meta.generatedAt, garde: meta.garde })
+    replacePharmacies(list, { label: meta.sourceLabel ?? 'Annuaire synchronisé', generatedAt: meta.generatedAt, garde: meta.garde, gardes: meta.gardes })
   } catch (e) {
     console.warn('[PHARMA CI] Annuaire synchronisé indisponible.', e)
   } finally {

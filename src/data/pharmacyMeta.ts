@@ -4,6 +4,8 @@ export type PharmacyMeta = {
   label: string
   generatedAt?: string
   garde?: { start: string; end: string; label: string }
+  /** Semaines du tour de garde officiel chargé (ex. tout le mois). */
+  gardes?: { start: string; end: string; label: string }[]
 }
 
 export const PHARMACY_META: PharmacyMeta = { live: false, label: 'Annuaire non chargé' }

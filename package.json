@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "sync:pharmacies": "node scripts/sync-pharmacies/sync.mjs",
-    "sync:test": "node --test scripts/sync-pharmacies/parse.test.mjs scripts/sync-pharmacies/official.test.mjs"
+    "sync:test": "node --test scripts/sync-pharmacies/parse.test.mjs scripts/sync-pharmacies/official.test.mjs scripts/sync-pharmacies/roster.test.mjs",
+    "sync:garde": "node scripts/sync-pharmacies/roster.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

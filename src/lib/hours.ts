@@ -22,7 +22,11 @@ export function gardeWeekIndex(now = new Date()) {
   return Math.floor(d.getTime() / (7 * 86400000))
 }
 
+const covers = (p: { start: string; end: string }, now: Date) => now >= new Date(p.start) && now < new Date(p.end)
+
 export function gardePeriod(now = new Date()) {
+  const week = PHARMACY_META.gardes?.find((w) => covers(w, now))
+  if (week) return { start: new Date(week.start), end: new Date(week.end) }
   if (PHARMACY_META.garde) return { start: new Date(PHARMACY_META.garde.start), end: new Date(PHARMACY_META.garde.end) }
   const start = new Date(now)
   start.setDate(start.getDate() - ((start.getDay() + 1) % 7))
@@ -32,8 +36,13 @@ export function gardePeriod(now = new Date()) {
   return { start, end }
 }
 
+/** Semaine de garde de la pharmacie qui couvre `now` (tour officiel du mois, sinon période publiée). */
+export function gardeOf(p: Pharmacy, now = new Date()) {
+  return p.gardes?.find((g) => covers(g, now)) ?? (p.garde && covers(p.garde, now) ? p.garde : undefined)
+}
+
 export function isOnGarde(p: Pharmacy, now = new Date()) {
-  if (p.garde) return now >= new Date(p.garde.start) && now < new Date(p.garde.end)
+  if (p.gardes?.length || p.garde) return !!gardeOf(p, now)
   return p.gardeGroup >= 0 && p.gardeGroup === gardeWeekIndex(now) % GARDE_GROUPS
 }
 
@@ -48,7 +57,8 @@ export function openInfo(p: Pharmacy, now = new Date()): OpenInfo {
 }
 
 function scheduleInfo(p: Pharmacy, now: Date): OpenInfo {
-  if (isOnGarde(p, now)) return { state: 'open', label: 'De garde', detail: p.garde ? `Garde jusqu'au ${new Date(p.garde.end).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}` : 'Ouverte 24h/24 cette semaine' }
+  const garde = gardeOf(p, now)
+  if (garde || isOnGarde(p, now)) return { state: 'open', label: 'De garde', detail: garde ? `Garde jusqu'au ${new Date(garde.end).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}` : 'Ouverte 24h/24 cette semaine' }
   const day = now.getDay()
   const minutes = now.getHours() * 60 + now.getMinutes()
   const today = p.hours[day]

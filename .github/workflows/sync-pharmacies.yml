@@ -37,6 +37,8 @@ jobs:
         run: node scripts/sync-pharmacies/sync.mjs ${{ inputs.garde_only && '--garde-only' || '' }}
       - name: Sources officielles et libres (AIRP, OpenStreetMap, OMS, AIP, Ordre)
         run: node scripts/sync-pharmacies/official.mjs
+      - name: Tour de garde officiel du mois (scripts/sync-pharmacies/garde/)
+        run: node scripts/sync-pharmacies/roster.mjs
       - name: Publication des données
         run: |
           if [ -z "$(git status --porcelain -- public/data scripts/sync-pharmacies)" ]; then
