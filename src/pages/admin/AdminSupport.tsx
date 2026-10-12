@@ -40,7 +40,7 @@ function ContactEditor() {
       <p className="font-bold">Coordonnées du service PHARMA CI</p>
       <p className="mb-3 text-sm text-slate-500">Affichées aux clients et aux agents dans « Contacter le support » (boutons WhatsApp, Appeler, E-mail).</p>
       {!contact.phone && !contact.whatsapp && !contact.email && !loadError && (
-        <Notice tone="orange" className="mb-3">Aucun numéro n'est encore indiqué : les clients et les agents ne voient que le formulaire.</Notice>
+        <Notice tone="orange" className="mb-3">Aucun contact enregistré ici : les clients et les agents voient le numéro par défaut +225 05 04 15 19 49. Enregistrez des coordonnées pour le remplacer.</Notice>
       )}
       {loadError && loadError !== 'Pas de connexion' && <Notice tone="red" className="mb-3">{loadError}</Notice>}
       <div className="grid gap-3 sm:grid-cols-2">

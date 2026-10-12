@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { TicketCategory, TicketStatus } from '../types'
+import type { SupportContact, TicketCategory, TicketStatus } from '../types'
 import { useStore } from '../store/useStore'
 import { getSupportContact } from './sync'
 
@@ -21,6 +21,11 @@ export const TICKET_STATUS: Record<TicketStatus, { label: string; tone: 'orange'
   resolu: { label: 'Résolu', tone: 'green' },
 }
 
+/** Numéro du service administratif donné par Assa (12/10/2026), utilisé tant qu'aucun contact n'est réglé dans Admin → Support. */
+export const DEFAULT_SUPPORT: SupportContact = { phone: '+2250504151949', whatsapp: '+2250504151949' }
+
+const hasAny = (c: SupportContact) => !!(c.phone || c.whatsapp || c.email)
+
 /** Coordonnées du support : copie locale affichée tout de suite, puis actualisée depuis le service. */
 export function useSupportContact() {
   const contact = useStore((s) => s.supportContact)
@@ -39,5 +44,5 @@ export function useSupportContact() {
   }, [setContact])
 
   useEffect(() => { void refresh() }, [refresh])
-  return { contact, loading, error, refresh }
+  return { contact, shown: hasAny(contact) ? contact : { ...DEFAULT_SUPPORT, ...contact, ...DEFAULT_SUPPORT }, loading, error, refresh }
 }

@@ -17,7 +17,7 @@ import { Badge, Button, Card, Chips, EmptyState, Input, Notice, PageHeader, Sect
  */
 export default function Support({ from }: { from: 'client' | 'agent' }) {
   const [params] = useSearchParams()
-  const { contact } = useSupportContact()
+  const { shown: contact } = useSupportContact()
   const user = useStore((s) => s.user)
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const missions = useStore((s) => s.missions)
