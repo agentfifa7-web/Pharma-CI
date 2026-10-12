@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AlertTriangle, BarChart3, Bell, Bike, BookOpen, Bot, Building2, Camera, ChevronDown, ClipboardList, Download, FileText, Home, LayoutDashboard,
+  AlertTriangle, BarChart3, Bell, Bike, BookOpen, Bot, Building2, Camera, ChevronDown, ClipboardList, Download, FileText, Headset, Home, LayoutDashboard,
   Lock, LogOut, Map, MapPin, Menu, MessageCircle, Newspaper, Pill, ScanLine, Shield, ShieldAlert, Siren, Stethoscope, Truck, User, Users, X,
 } from 'lucide-react'
 import { useActiveProfile, useStore } from '../store/useStore'
@@ -74,6 +74,7 @@ const PATIENT_NAV: { group: string; items: NavItem[] }[] = [
       { to: '/historique', label: 'Historique', icon: <ClipboardList size={18} /> },
       { to: '/famille', label: 'Dossier familial', icon: <Users size={18} /> },
       { to: '/profil', label: 'Profil & paramètres', icon: <User size={18} /> },
+      { to: '/support', label: 'Contacter le support', icon: <Headset size={18} /> },
       { to: '/installer', label: "Télécharger l'application", icon: <Download size={18} /> },
     ],
   },
@@ -289,6 +290,7 @@ export function AgentLayout() {
         { to: '/agent', label: 'Tableau de bord', icon: <Bike size={16} />, end: true },
         { to: '/agent/missions', label: 'Missions', icon: <ClipboardList size={16} /> },
         { to: '/agent/revenus', label: 'Revenus', icon: <BarChart3 size={16} /> },
+        { to: '/agent/support', label: 'Support', icon: <Headset size={16} /> },
       ]}
     />
   )
@@ -307,6 +309,7 @@ export function AdminLayout() {
         { to: '/admin/agents', label: 'Agents', icon: <Bike size={16} /> },
         { to: '/admin/pharmacies', label: 'Pharmacies', icon: <MapPin size={16} /> },
         { to: '/admin/assurances', label: 'Assurances', icon: <Shield size={16} /> },
+        { to: '/admin/support', label: 'Support', icon: <Headset size={16} /> },
         { to: '/admin/fraude', label: 'Anti-fraude', icon: <ShieldAlert size={16} /> },
         { to: '/admin/data', label: 'PHARMA DATA', icon: <BarChart3 size={16} /> },
         { to: '/admin/contenus', label: 'Contenus', icon: <Newspaper size={16} /> },

@@ -1,4 +1,4 @@
-import type { Agent, InsurerPartner, Mission } from '../types'
+import type { Agent, InsurerPartner, Mission, SupportContact, SupportTicket, TicketStatus } from '../types'
 import { SERVICE_URL } from '../data/extraction'
 
 /**
@@ -166,6 +166,84 @@ export async function savePartner(partner: InsurerPartner, adminCode: string, re
     if (status === 200 && body.ok === true) return { ok: true }
     if (status === 200 || status === 404 || status === 405) return { ok: false, error: 'Le service PHARMA CI doit être mis à jour (version 10).' }
     return { ok: false, error: typeof body.error === 'string' ? body.error : `Erreur ${status}` }
+  } catch {
+    return { ok: false, error: 'Pas de connexion' }
+  }
+}
+
+/* Support PHARMA CI : coordonnées du service administratif et signalements des clients et des agents. */
+
+const outdated = 'Le service PHARMA CI doit être mis à jour (version 11) pour le support.'
+const errorOf = (status: number, body: Record<string, unknown>) => (typeof body.error === 'string' ? body.error : status === 404 || status === 405 ? outdated : `Erreur ${status}`)
+
+export async function getSupportContact(): Promise<{ contact: SupportContact } | { error: string }> {
+  if (!SERVICE_URL) return { error: "Le service PHARMA CI n'est pas configuré sur ce site." }
+  try {
+    const { status, body } = await call('/support', {})
+    if (status === 200 && body.contact && typeof body.contact === 'object') return { contact: body.contact as SupportContact }
+    return { error: status === 200 ? outdated : errorOf(status, body) }
+  } catch {
+    return { error: 'Pas de connexion' }
+  }
+}
+
+export async function saveSupportContact(contact: SupportContact, adminCode: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { status, body } = await call('/support', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Admin-Code': adminCode }, body: JSON.stringify({ contact }) })
+    if (status === 200 && body.ok === true) return { ok: true }
+    return { ok: false, error: status === 200 ? outdated : errorOf(status, body) }
+  } catch {
+    return { ok: false, error: 'Pas de connexion' }
+  }
+}
+
+/** Envoie un signalement ; renvoie le secret qui permet à son auteur de suivre la réponse. */
+export async function sendTicket(t: SupportTicket): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+  if (!SERVICE_URL) return { ok: false, error: "Le service PHARMA CI n'est pas configuré sur ce site." }
+  try {
+    const { token: _t, status: _s, reply: _r, repliedAt: _ra, adminNote: _n, updatedAt: _u, ...data } = t
+    const { status, body } = await call('/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket: data }) })
+    if (status === 200 && typeof body.token === 'string') return { ok: true, token: body.token }
+    return { ok: false, error: status === 200 ? outdated : errorOf(status, body) }
+  } catch {
+    return { ok: false, error: 'Pas de connexion' }
+  }
+}
+
+/** Suivi d'un signalement par son auteur (secret de suivi). */
+export async function fetchTicket(id: string, token: string): Promise<SupportTicket | undefined> {
+  try {
+    const { status, body } = await call(`/tickets/${encodeURIComponent(id)}`, { headers: { 'X-Ticket-Token': token } })
+    return status === 200 ? (body.ticket as SupportTicket) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export async function listTickets(adminCode: string): Promise<{ tickets: SupportTicket[] } | { error: string }> {
+  if (!SERVICE_URL) return { error: "Le service PHARMA CI n'est pas configuré sur ce site." }
+  try {
+    const { status, body } = await call('/tickets', { headers: { 'X-Admin-Code': adminCode } })
+    if (status === 200 && Array.isArray(body.tickets)) return { tickets: body.tickets as SupportTicket[] }
+    return { error: status === 200 ? outdated : errorOf(status, body) }
+  } catch {
+    return { error: 'Pas de connexion' }
+  }
+}
+
+export async function updateTicket(
+  id: string,
+  patch: { status?: TicketStatus; reply?: string; adminNote?: string },
+  adminCode: string,
+  remove = false,
+): Promise<{ ok: true; ticket?: SupportTicket } | { ok: false; error: string }> {
+  try {
+    const init: RequestInit = remove
+      ? { method: 'DELETE', headers: { 'X-Admin-Code': adminCode } }
+      : { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Admin-Code': adminCode }, body: JSON.stringify(patch) }
+    const { status, body } = await call(`/tickets/${encodeURIComponent(id)}`, init)
+    if (status === 200 && body.ok === true) return { ok: true, ticket: body.ticket as SupportTicket | undefined }
+    return { ok: false, error: status === 200 ? outdated : errorOf(status, body) }
   } catch {
     return { ok: false, error: 'Pas de connexion' }
   }

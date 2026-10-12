@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  AlertTriangle, Check, CheckCircle2, Clock, Download, ExternalLink, FileText, KeyRound, Phone, Receipt, Star, Truck, XCircle,
+  AlertTriangle, Check, CheckCircle2, Clock, Download, ExternalLink, FileText, Headset, KeyRound, Phone, Receipt, Star, Truck, XCircle,
 } from 'lucide-react'
 import type { LatLng, Mission } from '../../types'
 import { MISSION_LABEL, useStore } from '../../store/useStore'
@@ -305,6 +305,10 @@ export default function MissionTracking() {
               <FileText size={16} className="text-brand-600" /> Ordonnance {prescription.id}
             </Link>
           )}
+
+          <Link to={`/support?mission=${m.id}`} className="mb-3 flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold ring-1 ring-slate-200 hover:bg-slate-50">
+            <Headset size={16} className="text-brand-600" /> Un souci ? Contacter le support
+          </Link>
 
           {cancellable && (
             <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50" onClick={() => setCancelOpen(true)}>

@@ -40,7 +40,7 @@ Après la publication, la page « Envoyer une ordonnance » lit les ordonnances 
 ## Mettre à jour le service
 Quand `worker.js` change dans ce dépôt, il faut recoller le code chez Cloudflare (la clé, elle, est conservée) :
 **Workers & Pages** → `ordonnance-ia` → **Edit code** → tout effacer → coller le nouveau `worker.js` → **Deploy**.
-L'adresse du service affiche alors le numéro de version (`"version":10`).
+L'adresse du service affiche alors le numéro de version (`"version":11`).
 
 ## Missions partagées entre patients et agents (base de données)
 Sans cette base, une mission n'existe que sur le téléphone du patient : l'agent ne la reçoit pas sur son propre
@@ -105,3 +105,12 @@ un agent et les agents enregistrés (aucune donnée personnelle).
 - **Qualité** : une photo nette, de face, bien éclairée et en taille originale (pas une miniature WhatsApp) donne
   le meilleur résultat. Le patient vérifie toujours chaque ligne avant de confirmer.
 - Le modèle utilisé peut être changé avec la variable `GEMINI_MODEL` (il est alors essayé en premier), par exemple avec un nom de la rubrique `available` du diagnostic.
+
+## Support PHARMA CI (« Contacter le support »)
+Les clients (`/support`) et les agents (`/agent/support`) peuvent joindre le service administratif : boutons
+WhatsApp, appel et e-mail, et un formulaire de signalement (catégorie, commande concernée, message, téléphone).
+Les signalements sont gardés dans la même base (table `tickets`, créée automatiquement). L'administratrice les voit
+dans `https://www.pharma-ci.org/admin/support` (code administrateur requis), répond, et change leur statut
+(nouveau, en cours, résolu) ; l'auteur voit la réponse dans « Mes signalements » sur son téléphone. Les coordonnées
+du service (téléphone, WhatsApp, e-mail, horaires) se règlent sur la même page Admin, sans toucher au code.
+La rubrique `base` du diagnostic compte les `signalements` et les `signalementsOuverts`.
