@@ -19,10 +19,11 @@
  * Réponse : { lines: [{ texte, nom, dosage, forme, posologie, duree, quantite, confiance }] }
  *
  * Missions (commandes) partagées entre l'application du patient et celle de l'agent, voir handleMissions.
+ * Support : signalements des clients et des agents au service administratif, voir handleSupport.
  */
 
 const DEFAULT_ORIGINS = ['https://www.pharma-ci.org', 'https://pharma-ci.org', 'https://agentfifa7-web.github.io', 'http://localhost:5173', 'http://localhost:4173']
-const VERSION = 10
+const VERSION = 11
 const MAX_FILES = 6
 const MAX_BYTES = 12 * 1024 * 1024 // total des fichiers (base64 décodé)
 const MIME_OK = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/
@@ -101,7 +102,7 @@ export default {
     const cors = {
       'Access-Control-Allow-Origin': allowed ? origin : DEFAULT_ORIGINS[0],
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Agent-Code, X-Admin-Code, X-Mission-Token',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Agent-Code, X-Admin-Code, X-Mission-Token, X-Ticket-Token',
       'Access-Control-Max-Age': '86400',
       Vary: 'Origin',
     }
@@ -122,6 +123,14 @@ export default {
       if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
       try {
         return await handlePartners(request, env, url, json)
+      } catch (e) {
+        return json({ error: `Erreur de la base de données : ${String(e?.message ?? e).slice(0, 200)}` }, 500)
+      }
+    }
+    if (url.pathname.startsWith('/support') || url.pathname.startsWith('/tickets')) {
+      if (!allowed) return json({ error: 'Origine non autorisée' }, 403)
+      try {
+        return await handleSupport(request, env, url, json)
       } catch (e) {
         return json({ error: `Erreur de la base de données : ${String(e?.message ?? e).slice(0, 200)}` }, 500)
       }
@@ -153,6 +162,8 @@ export default {
             missionsEnAttente: await count("SELECT COUNT(*) AS n FROM missions WHERE status = 'payee'"),
             agents: await count('SELECT COUNT(*) AS n FROM agents'),
             assureurs: await count('SELECT COUNT(*) AS n FROM partners'),
+            signalements: await count('SELECT COUNT(*) AS n FROM tickets'),
+            signalementsOuverts: await count("SELECT COUNT(*) AS n FROM tickets WHERE status != 'resolu'"),
           }
         } catch (e) {
           info.base = `erreur : ${String(e?.message ?? e).slice(0, 200)}`
@@ -360,6 +371,8 @@ async function ensureSchema(db) {
   ).run()
   await db.prepare('CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)').run()
   await db.prepare('CREATE TABLE IF NOT EXISTS partners (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)').run()
+  await db.prepare('CREATE TABLE IF NOT EXISTS tickets (id TEXT PRIMARY KEY, status TEXT NOT NULL, token TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)').run()
+  await db.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)').run()
   schemaReady = true
 }
 
@@ -523,6 +536,129 @@ async function handlePartners(request, env, url, json) {
   }
   if (request.method === 'DELETE') {
     await env.DB.prepare('DELETE FROM partners WHERE id = ?').bind(id).run()
+    return json({ ok: true })
+  }
+  return json({ error: 'Méthode non autorisée' }, 405)
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Support PHARMA CI : les clients et les agents contactent le service administratif en cas de souci.
+ *
+ *  GET    /support          coordonnées du service (téléphone, WhatsApp, e-mail, horaires) : lecture publique
+ *  PUT    /support          { contact } modifie ces coordonnées (code ADMIN_CODE)
+ *  POST   /tickets          { ticket } nouveau signalement (client ou agent) ; renvoie le secret de suivi
+ *  GET    /tickets/:id      suivi d'un signalement par son auteur (en-tête X-Ticket-Token) ou par l'admin
+ *  GET    /tickets          liste de tous les signalements (code ADMIN_CODE)
+ *  PUT    /tickets/:id      { status, reply } réponse et statut (code ADMIN_CODE)
+ *  DELETE /tickets/:id      supprime un signalement (code ADMIN_CODE)
+ * ---------------------------------------------------------------------------------------------- */
+const TICKET_STATUS = ['nouveau', 'en_cours', 'resolu']
+const TICKET_LIMITS = { name: 80, phone: 30, category: 40, subject: 120, message: 3000, missionId: 40, reply: 3000 }
+
+const text = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
+
+function isAdmin(request, env) {
+  return !!env.ADMIN_CODE && (request.headers.get('X-Admin-Code') ?? '') === env.ADMIN_CODE
+}
+
+/** Signalement tel que renvoyé ; la note interne de l'admin n'est montrée qu'à l'admin. */
+function ticketView(row, forAdmin = true) {
+  const { adminNote, ...data } = JSON.parse(row.data)
+  return { ...data, ...(forAdmin && adminNote ? { adminNote } : {}), id: row.id, status: row.status, createdAt: new Date(row.created_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString() }
+}
+
+async function handleSupport(request, env, url, json) {
+  if (!env.DB) return json({ error: "La base de données n'est pas encore activée (liaison D1 « DB »)." }, 503)
+  await ensureSchema(env.DB)
+  const [, root, rawId] = url.pathname.split('/')
+  const id = decodeURIComponent(rawId ?? '')
+  const adminRequired = () =>
+    !env.ADMIN_CODE
+      ? json({ error: "Le code administrateur n'est pas encore configuré (secret ADMIN_CODE chez Cloudflare)." }, 503)
+      : json({ error: 'Code administrateur incorrect' }, 401)
+
+  if (root === 'support') {
+    if (request.method === 'GET') {
+      const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'support'").first()
+      return json({ contact: row ? JSON.parse(row.value) : {} })
+    }
+    if (request.method === 'PUT') {
+      if (!isAdmin(request, env)) return adminRequired()
+      const c = (await request.json().catch(() => null))?.contact
+      if (!c || typeof c !== 'object') return json({ error: 'Coordonnées invalides' }, 400)
+      const contact = { phone: text(c.phone, 30), whatsapp: text(c.whatsapp, 30), email: text(c.email, 120), hours: text(c.hours, 200), note: text(c.note, 500) }
+      await env.DB.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('support', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
+        .bind(JSON.stringify(contact), Date.now()).run()
+      return json({ ok: true, contact })
+    }
+    return json({ error: 'Méthode non autorisée' }, 405)
+  }
+
+  // /tickets
+  if (request.method === 'POST' && !id) {
+    const t = (await request.json().catch(() => null))?.ticket
+    if (!t || !/^SUP-[A-Z0-9]{4,12}$/.test(t.id ?? '')) return json({ error: 'Signalement invalide' }, 400)
+    const from = t.from === 'agent' ? 'agent' : 'client'
+    const message = text(t.message, TICKET_LIMITS.message)
+    const phone = text(t.phone, TICKET_LIMITS.phone)
+    if (message.length < 5) return json({ error: 'Décrivez le problème en quelques mots.' }, 400)
+    if (!phone) return json({ error: 'Indiquez un numéro de téléphone pour être rappelé.' }, 400)
+    const data = {
+      from,
+      name: text(t.name, TICKET_LIMITS.name),
+      phone,
+      category: text(t.category, TICKET_LIMITS.category) || 'autre',
+      subject: text(t.subject, TICKET_LIMITS.subject),
+      message,
+      missionId: text(t.missionId, TICKET_LIMITS.missionId) || undefined,
+      agentId: from === 'agent' ? text(t.agentId, 40) || undefined : undefined,
+    }
+    // Garde-fou contre l'envoi en boucle : 20 signalements ouverts au plus par numéro.
+    const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM tickets WHERE status != 'resolu' AND json_extract(data, '$.phone') = ?").bind(phone).first()
+    if ((open?.n ?? 0) >= 20) return json({ error: 'Trop de signalements en attente pour ce numéro. Le service vous recontacte.' }, 429)
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
+    const now = Date.now()
+    try {
+      await env.DB.prepare('INSERT INTO tickets (id, status, token, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(t.id, 'nouveau', token, JSON.stringify(data), now, now).run()
+    } catch {
+      return json({ error: 'Ce signalement existe déjà' }, 409)
+    }
+    return json({ ok: true, id: t.id, token })
+  }
+
+  if (request.method === 'GET' && id) {
+    const row = await env.DB.prepare('SELECT * FROM tickets WHERE id = ?').bind(id).first()
+    if (!row) return json({ error: 'Signalement introuvable' }, 404)
+    const admin = isAdmin(request, env)
+    if (!admin && (request.headers.get('X-Ticket-Token') ?? '') !== row.token) return json({ error: 'Accès refusé' }, 403)
+    return json({ ticket: ticketView(row, admin) })
+  }
+
+  if (!isAdmin(request, env)) return adminRequired()
+
+  if (request.method === 'GET') {
+    const { results } = await env.DB.prepare('SELECT * FROM tickets ORDER BY created_at DESC LIMIT 500').all()
+    return json({ tickets: results.map((r) => ticketView(r)) })
+  }
+  if (!id) return json({ error: 'Signalement manquant' }, 400)
+  if (request.method === 'PUT') {
+    const body = await request.json().catch(() => null)
+    const row = await env.DB.prepare('SELECT * FROM tickets WHERE id = ?').bind(id).first()
+    if (!row) return json({ error: 'Signalement introuvable' }, 404)
+    const status = TICKET_STATUS.includes(body?.status) ? body.status : row.status
+    const data = JSON.parse(row.data)
+    if (typeof body?.reply === 'string') {
+      data.reply = text(body.reply, TICKET_LIMITS.reply) || undefined
+      data.repliedAt = data.reply ? new Date().toISOString() : undefined
+    }
+    if (typeof body?.adminNote === 'string') data.adminNote = text(body.adminNote, 1000) || undefined
+    const now = Date.now()
+    await env.DB.prepare('UPDATE tickets SET status = ?, data = ?, updated_at = ? WHERE id = ?').bind(status, JSON.stringify(data), now, id).run()
+    return json({ ok: true, ticket: ticketView({ ...row, status, data: JSON.stringify(data), updated_at: now }) })
+  }
+  if (request.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM tickets WHERE id = ?').bind(id).run()
     return json({ ok: true })
   }
   return json({ error: 'Méthode non autorisée' }, 405)

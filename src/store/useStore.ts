@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
-  Agent, FamilyProfile, FraudEvent, InsurerPartner, Invoice, LatLng, Mission, MissionStatus, Prescription,
+  Agent, FamilyProfile, FraudEvent, InsurerPartner, Invoice, LatLng, Mission, MissionStatus, Prescription, SupportContact, SupportTicket,
   PrescriptionLine, PrescriptionStatus, Rating, Treatment, UserInsurance, VigilanceReport,
 } from '../types'
 import { PHARMACIES } from '../data/pharmacies'
@@ -63,6 +63,10 @@ type State = {
   adminCode: string
   /** Assureurs partenaires (copie du service, gardée pour l'affichage hors connexion). */
   partners: InsurerPartner[]
+  /** Coordonnées du support (copie du service, gardée pour l'affichage hors connexion). */
+  supportContact: SupportContact
+  /** Signalements envoyés au support depuis ce téléphone (avec leur secret de suivi). */
+  supportTickets: SupportTicket[]
   treatments: Treatment[]
   reports: VigilanceReport[]
   fraud: FraudEvent[]
@@ -116,6 +120,9 @@ type State = {
   setAgentCode: (code: string) => void
   setAdminCode: (code: string) => void
   setPartners: (partners: InsurerPartner[]) => void
+  setSupportContact: (contact: SupportContact) => void
+  /** Ajoute ou met à jour un signalement de ce téléphone (le secret de suivi est conservé). */
+  saveSupportTicket: (t: SupportTicket) => void
   setAgentSyncError: (error?: string) => void
   setLastSync: (at: string) => void
   saveAgentProfile: (p: Pick<Agent, 'name' | 'phone' | 'zone' | 'vehicle'>) => void
@@ -159,6 +166,8 @@ const initial = () => ({
   agentSyncError: undefined as string | undefined,
   adminCode: '',
   partners: [] as InsurerPartner[],
+  supportContact: {} as SupportContact,
+  supportTickets: [] as SupportTicket[],
   treatments: [] as Treatment[],
   reports: [] as VigilanceReport[],
   fraud: [] as FraudEvent[],
@@ -504,6 +513,13 @@ export const useStore = create<State>()(
         setAgentSyncError: (agentSyncError) => set({ agentSyncError }),
         setAdminCode: (adminCode) => set({ adminCode: adminCode.trim() }),
         setPartners: (partners) => set({ partners }),
+        setSupportContact: (supportContact) => set({ supportContact }),
+        saveSupportTicket: (t) =>
+          set((s) => {
+            const old = s.supportTickets.find((x) => x.id === t.id)
+            const next = { ...old, ...t, token: t.token ?? old?.token }
+            return { supportTickets: old ? s.supportTickets.map((x) => (x.id === t.id ? next : x)) : [next, ...s.supportTickets] }
+          }),
         setLastSync: (lastSync) => set({ lastSync }),
         saveAgentProfile: (p) => {
           const current = get().agents.find((a) => a.id === get().currentAgentId)

@@ -34,6 +34,7 @@ const Family = lazy(() => import('./pages/patient/Family'))
 const Profile = lazy(() => import('./pages/patient/Profile'))
 const Notifications = lazy(() => import('./pages/patient/Notifications'))
 const Install = lazy(() => import('./pages/patient/Install'))
+const Support = lazy(() => import('./pages/shared/Support'))
 const NotFound = lazy(() => import('./pages/patient/NotFound'))
 
 const AgentDashboard = lazy(() => import('./pages/agent/AgentDashboard'))
@@ -50,6 +51,7 @@ const AdminFraud = lazy(() => import('./pages/admin/AdminFraud'))
 const AdminData = lazy(() => import('./pages/admin/AdminData'))
 const AdminContent = lazy(() => import('./pages/admin/AdminContent'))
 const AdminInsurers = lazy(() => import('./pages/admin/AdminInsurers'))
+const AdminSupport = lazy(() => import('./pages/admin/AdminSupport'))
 const AdminSecurity = lazy(() => import('./pages/admin/AdminSecurity'))
 
 export default function App() {
@@ -90,6 +92,7 @@ export default function App() {
           <Route path="profil" element={<Profile />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="installer" element={<Install />} />
+          <Route path="support" element={<Support from="client" />} />
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="agent" element={<AgentLayout />}>
@@ -97,6 +100,7 @@ export default function App() {
           <Route path="missions" element={<AgentMissions />} />
           <Route path="missions/:id" element={<AgentMission />} />
           <Route path="revenus" element={<AgentEarnings />} />
+          <Route path="support" element={<Support from="agent" />} />
         </Route>
         <Route path="admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
@@ -108,6 +112,7 @@ export default function App() {
           <Route path="data" element={<AdminData />} />
           <Route path="contenus" element={<AdminContent />} />
           <Route path="assurances" element={<AdminInsurers />} />
+          <Route path="support" element={<AdminSupport />} />
           <Route path="securite" element={<AdminSecurity />} />
         </Route>
       </Routes>

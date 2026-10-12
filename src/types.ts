@@ -334,3 +334,30 @@ export type HealthPlace = {
   source?: string
   sourceUrl?: string
 }
+
+/** Coordonnées du service administratif de PHARMA CI (réglées dans Admin → Support). */
+export type SupportContact = { phone?: string; whatsapp?: string; email?: string; hours?: string; note?: string }
+
+export type TicketStatus = 'nouveau' | 'en_cours' | 'resolu'
+export type TicketCategory = 'commande' | 'livraison' | 'paiement' | 'application' | 'compte' | 'securite' | 'autre'
+
+/** Signalement envoyé au support par un client ou un agent. */
+export type SupportTicket = {
+  id: string
+  from: 'client' | 'agent'
+  name: string
+  phone: string
+  category: TicketCategory
+  subject?: string
+  message: string
+  missionId?: string
+  agentId?: string
+  status: TicketStatus
+  reply?: string
+  repliedAt?: string
+  adminNote?: string
+  createdAt: string
+  updatedAt?: string
+  /** Secret de suivi, gardé sur le téléphone de l'auteur seulement. */
+  token?: string
+}

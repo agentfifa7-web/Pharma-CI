@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  AlertTriangle, Ban, Camera, MessageCircle, Phone, Check, CheckCircle2, ClipboardCheck, Clock, Hourglass, KeyRound, MapPin, Navigation, Pill, Receipt, Search, Store, Truck, Wallet, XCircle,
+  AlertTriangle, Ban, Camera, MessageCircle, Phone, Check, CheckCircle2, ClipboardCheck, Clock, Headset, Hourglass, KeyRound, MapPin, Navigation, Pill, Receipt, Search, Store, Truck, Wallet, XCircle,
 } from 'lucide-react'
 import type { LatLng, Mission, Pharmacy, Prescription } from '../../types'
 import { MISSION_LABEL, useStore } from '../../store/useStore'
@@ -64,6 +64,9 @@ export default function AgentMission() {
         action={<Badge tone={MISSION_TONE[m.status]} className="hidden sm:inline-flex">{MISSION_LABEL[m.status]}</Badge>}
       />
       <Badge tone={MISSION_TONE[m.status]} className="mb-3 sm:hidden">{MISSION_LABEL[m.status]}</Badge>
+      <Link to={`/agent/support?mission=${m.id}`} className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:underline">
+        <Headset size={15} /> Un souci sur cette mission ? Contacter le support
+      </Link>
 
       {m.agentId && !isMine && (
         <Notice tone="orange" className="mb-4">
