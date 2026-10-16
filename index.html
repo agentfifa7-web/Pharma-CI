@@ -16,7 +16,13 @@
     <title>PHARMA CI</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Écran de chargement affiché tout de suite (remplacé par l'application dès que les données sont prêtes),
+         pour que l'écran ne reste jamais blanc sur un téléphone à connexion lente. -->
+    <div id="root"><div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#009E60;color:#fff;font-family:system-ui,sans-serif">
+      <img src="/icons/icon-192.png" alt="" width="88" height="88" style="border-radius:22px;box-shadow:0 6px 24px rgba(0,0,0,.18)" />
+      <div style="font-size:22px;font-weight:800;letter-spacing:.5px">PHARMA CI</div>
+      <div style="font-size:14px;opacity:.85">Chargement des pharmacies…</div>
+    </div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -5,14 +5,27 @@ import './index.css'
 import App from './App.tsx'
 import { loadAllData } from './services/pharmacyProvider'
 import { captureInstallPrompt } from './lib/install'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { RELOAD_KEY, reloadOnce } from './lib/reload'
 
 captureInstallPrompt()
+
+// Après une mise à jour du site, un fichier de l'ancienne version peut ne plus exister : on recharge une fois.
+window.addEventListener('vite:preloadError', (event) => {
+  if (reloadOnce()) event.preventDefault()
+})
+// L'application s'est affichée correctement : un prochain problème pourra de nouveau déclencher un rechargement.
+window.addEventListener('load', () => setTimeout(() => {
+  try { sessionStorage.removeItem(RELOAD_KEY) } catch { /* stockage indisponible */ }
+}, 10000))
 
 // L'annuaire synchronisé est chargé avant le premier rendu (toutes les données proviennent des fichiers synchronisés).
 void loadAllData().finally(() =>
   createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
   ),
 )
