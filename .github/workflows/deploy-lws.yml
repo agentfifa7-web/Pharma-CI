@@ -1,0 +1,75 @@
+name: Publication de l'application (hébergement LWS)
+
+# Construit l'application et l'envoie par FTP sur l'hébergement LWS
+# — à chaque push sur main, après chaque synchronisation des données, ou à la demande.
+#
+# Prérequis (une fois) : Settings → Secrets and variables → Actions
+#   Secrets   : LWS_FTP_SERVER (ex. ftp.pharma-ci.org), LWS_FTP_USERNAME, LWS_FTP_PASSWORD
+#   Variables : LWS_FTP_DIR (dossier du site sur le serveur, par défaut /htdocs/)
+#               LWS_FTP_PROTOCOL (ftps par défaut ; mettre ftp si LWS refuse la connexion chiffrée)
+# Tant que les secrets ne sont pas renseignés, ce workflow ne fait rien (il se termine sans erreur).
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: ['Synchronisation des pharmacies']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lws
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérification de la configuration FTP
+        id: config
+        env:
+          SERVER: ${{ secrets.LWS_FTP_SERVER }}
+          USERNAME: ${{ secrets.LWS_FTP_USERNAME }}
+          PASSWORD: ${{ secrets.LWS_FTP_PASSWORD }}
+        run: |
+          if [ -n "$SERVER" ] && [ -n "$USERNAME" ] && [ -n "$PASSWORD" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Secrets LWS_FTP_SERVER / LWS_FTP_USERNAME / LWS_FTP_PASSWORD absents : publication LWS ignorée."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.ready == 'true'
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        if: steps.config.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.config.outputs.ready == 'true'
+        run: npm ci
+      - name: Build (site servi à la racine du domaine)
+        if: steps.config.outputs.ready == 'true'
+        env:
+          VITE_ORDONNANCE_IA_URL: ${{ vars.ORDONNANCE_IA_URL }}
+        run: |
+          npx tsc -b && npx vite build --base=/
+          cp dist/index.html dist/404.html
+          rm -f dist/CNAME dist/_redirects dist/.nojekyll   # propres à GitHub Pages / Netlify
+      - name: Envoi FTP vers LWS
+        if: steps.config.outputs.ready == 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.LWS_FTP_SERVER }}
+          username: ${{ secrets.LWS_FTP_USERNAME }}
+          password: ${{ secrets.LWS_FTP_PASSWORD }}
+          protocol: ${{ vars.LWS_FTP_PROTOCOL || 'ftps' }}
+          local-dir: ./dist/
+          server-dir: ${{ vars.LWS_FTP_DIR || '/htdocs/' }}
+          # N'envoie que les fichiers modifiés (état mémorisé sur le serveur) ; ne supprime jamais
+          # les fichiers qui n'appartiennent pas à l'application (ex. dossiers créés par LWS).
+          dangerous-clean-slate: false
