@@ -1,0 +1,39 @@
+# PHARMA CI — configuration Apache (hébergement LWS). Sans effet sur GitHub Pages.
+
+# HTTPS obligatoire
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Application monopage : toute adresse qui n'est pas un fichier existant renvoie index.html
+# (ex. https://www.pharma-ci.org/garde ouvert directement ou après actualisation).
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
+
+<IfModule mod_headers.c>
+  # Toujours vérifier la dernière version : page d'accueil, service worker, manifeste et données du jour
+  <FilesMatch "^(index\.html|404\.html|sw\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  <FilesMatch "\.json$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  # Fichiers versionnés par la construction (nom avec empreinte) : cache long
+  <If "%{REQUEST_URI} =~ m#^/assets/#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json application/manifest+json image/svg+xml
+</IfModule>
+
+Options -Indexes
